@@ -1,4 +1,4 @@
-BASIS_FILE=interpreter.mlb
+BASIS_FILE=scheme.mlb
 COMPILER=mlton
 COMP_FLAGS=-codegen native
 all:
