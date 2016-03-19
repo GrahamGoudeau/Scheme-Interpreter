@@ -101,7 +101,85 @@ fun parse_literal original_state literal fail =
 fun parse_open_paren state fail =
   parse_literal state "(" fail
 
-(*fun parse_definition _ = (SOME(0), STATE([], 1, 1))*)
+fun parse_identifier (STATE([], line, col)) fail =
+  if fail then
+    raise_error
+      (STATE([], line, col))
+      (EXPECTED_IDENT("Expected valid identifier"))
+  else
+    (NONE, (STATE([], line, col)))
+  | parse_identifier (STATE((c::cs), line, col)) fail =
+  let
+    val accepted_initials = [#"!", #"$", #"%", #"&", #"*", #"/", #":",
+                             #"<", #"=", #">", #"?", #"~", #"_", #"^"]
+
+    fun parse_initial (STATE([], line, col)) fail =
+          if fail then
+            raise_error
+              ((STATE([], line, col)))
+              (EXPECTED_IDENT("Expected valid identifier, reached EOF"))
+          else (NONE, (STATE([], line, col)))
+      | parse_initial (STATE((c::cs), line, col)) fail =
+          if Char.isAlpha c orelse (List.exists (fn ch => ch = c)
+                                    accepted_initials)
+          then (SOME(c), (STATE(cs, line, col + 1)))
+          else
+            if fail then
+              raise_error
+                (STATE((c::cs), line, col))
+                (EXPECTED_IDENT("Expected valid identifier, got invalid first char \"" ^
+                  String.implode [c] ^ "\""))
+            else (NONE, (STATE((c::cs), line, col)))
+
+    fun parse_subsequent (STATE([], line, col)) fail =
+          if fail then
+              raise_error
+                ((STATE([], line, col)))
+                (EXPECTED_IDENT("Expected valid identifier, reached EOF"))
+          (*else (NONE, (STATE([], line, col)))*)
+          else ([], (STATE([], line, col)))
+      | parse_subsequent (STATE((c::cs), line, col)) fail =
+          let
+            fun parse_all (STATE([], line, col)) acc fail =
+                  ((List.rev acc), (STATE([], line, col)))
+              | parse_all (STATE((c::cs), line, col)) acc fail =
+              let
+                val (try_init, init_state) =
+                  parse_initial (STATE((c::cs), line, col)) false
+              in
+              if (not (try_init = NONE)) orelse (Char.isDigit c) then
+                parse_all (STATE(cs, line, col + 1)) (c::acc) fail
+              else
+                if fail then
+                raise_error
+                  (STATE((c::cs), line, col))
+                  (EXPECTED_IDENT("Expected valid identifier, got invalid \"" ^
+                  (String.implode [c]) ^ "\""))
+                else
+                  ((List.rev acc), (STATE((c::cs), line, col)))
+              end
+          in
+            parse_all (STATE((c::cs), line, col)) [] fail
+          end
+    val skip_ws_state = skip_whitespace(STATE((c::cs), line, col))
+    val (init, init_state) = parse_initial skip_ws_state fail
+    val (rest, rest_state) =
+      if init = NONE then ([], init_state)
+      else parse_subsequent init_state false
+    val ident = if init = NONE then NONE
+                else (SOME((strip_option_char init)::rest))
+  in
+    if ident = NONE then
+      if fail then
+        raise_error
+          (STATE((c::cs), line, col))
+          (EXPECTED_IDENT("Expected valid identifier"))
+      else (NONE, (STATE((c::cs), line, col)))
+    else
+      (ident, rest_state)
+  end
+
+
 fun parse_definition state fail =
   let
     val skip_ws_state1 = skip_whitespace state
