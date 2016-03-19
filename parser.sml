@@ -35,6 +35,8 @@ fun raise_error (STATE(_, l, c)) error =
           (print (get_msg msg); raise TabCharacterFound)
       | handle_error (LIT_NOT_FOUND(msg)) =
           (print (get_msg msg); raise LiteralNotFound)
+      | handle_error (EXPECTED_IDENT(msg)) =
+          (print (get_msg msg); raise ExpectedIdentifier)
   in
     handle_error error
   end
