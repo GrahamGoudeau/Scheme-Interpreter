@@ -50,21 +50,84 @@ fun skip_whitespace (STATE([], l, c)) = STATE([], l, c)
         val tab_line_str = Int.toString l
         val tab_line_col = Int.toString c
       in
-        raise TabCharacterFound(String.concat["Tab char found at line: ",
-                                              tab_line_str,
-                                              ", column: ",
-                                              tab_line_col])
+        raise_error (STATE(cs, l, c)) (TAB("Tab char found at line: " ^
+                         tab_line_str ^
+                         ", column: " ^
+                         tab_line_col))
       end
   | skip_whitespace state = state
 
-fun parse_forms (STATE([], line, col)) = STATE([], line, col)
-  | parse_forms (STATE((c::cs), line, col)) = STATE(cs, line, col)
+(* expects a string literal as a string; the function will explode it *)
+fun parse_literal original_state literal fail =
+  let
+    val lit = String.explode literal
 
+    fun consume_literal (STATE((t::ts), line, col)) (l :: ls) acc =
+      if t = l then consume_literal (STATE(ts, line, (col + 1))) ls (l::acc)
+      else (false, original_state, (List.rev acc))
+      | consume_literal (STATE([], line, col)) (l :: ls) acc =
+          (false, original_state, (List.rev acc))
+      | consume_literal state [] acc = (true, state, (List.rev acc))
+
+    val (result, new_state, acc) = consume_literal original_state lit []
+
+  in
+    if result then (SOME(lit), new_state)
+    else
+      if fail then
+        raise_error original_state (LIT_NOT_FOUND("Literal \"" ^
+                                  (String.implode lit) ^
+                                  "\" expected but not found; " ^
+                                  "\"" ^ 
+                                  (String.implode acc) ^
+                                  "\" found instead"))
+      else (NONE, original_state)
+  end
+
+fun parse_open_paren state fail =
+  parse_literal state "(" fail
+
+(*fun parse_definition _ = (SOME(0), STATE([], 1, 1))*)
+fun parse_definition state fail =
+  let
+    val (open_paren, open_paren_state) = parse_open_paren state fail
+    val (define_lit, define_lit_state) =
+      parse_literal open_paren_state "define" fail
+  in
+    (SOME(0), define_lit_state)
+end
+
+(*fun parse_expression _ = (SOME(0), STATE([], 1, 1))*)
+
+fun parse_forms (STATE([], line, col)) = []
+  | parse_forms state =
+      let
+        fun accumulate_forms (STATE([], _, _)) forms =
+              List.rev forms
+          | accumulate_forms state forms =
+          let
+            val (def_node, def_state) = parse_definition state true
+            val (expr_node, expr_state) = (*parse_expression state*)
+                  (SOME(0), STATE([], 1, 1))
+            val (final_node, final_state) = if def_node = NONE then
+                                              (expr_node, expr_state)
+                                            else (def_node, def_state)
+          in
+            accumulate_forms final_state (final_node :: forms)
+          end
+      in
+        accumulate_forms state []
+      end
+
+
+(* expects a list of characters, not a string *)
 fun parse text =
   let
     val init_state = STATE(text, 1, 1)
     val skipped = skip_whitespace init_state
   in
-    parse_forms init_state
+    (parse_forms init_state;
+    print (String.implode (get_unparsed_text skipped)))
   end
 
+val x = parse_definition (STATE((String.explode "(def x0 := 4;\n"), 1, 1)) true
