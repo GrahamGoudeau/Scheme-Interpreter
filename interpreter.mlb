@@ -1,3 +1,4 @@
 $(SML_LIB)/basis/basis.mlb
+ast.sml
 parser.sml
 main.sml
