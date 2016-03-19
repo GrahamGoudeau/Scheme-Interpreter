@@ -11,8 +11,19 @@ and defn_type = int
 
 exception TabCharacterFound
 exception LiteralNotFound
+exception ExpectedIdentifier
 datatype error = TAB of string
                | LIT_NOT_FOUND of string
+               | EXPECTED_IDENT of string
+
+(* expects a list of SOME(chars), returns a list of just
+ * the chars.  Raises exception if there is a NONE in the list *)
+fun strip_option_list [] = []
+  | strip_option_list ((SOME(c)::cs)) = (c::(strip_option_list cs))
+  | strip_option_list (NONE::cs) = raise Match
+
+fun strip_option_char (SOME(c)) = c
+  | strip_option_char _ = raise Match
 
 fun raise_error (STATE(_, l, c)) error =
   let
