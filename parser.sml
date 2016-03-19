@@ -189,11 +189,13 @@ fun parse_definition state fail =
       skip_whitespace open_paren_state
     val (define_lit, define_lit_state) =
       parse_literal skip_ws_state2 "define" fail
+    val skip_ws_state3 =
+      skip_whitespace define_lit_state
+    (*val (ident, ident_state)*)
   in
     (SOME(0), define_lit_state)
 end
 
-(*fun parse_expression _ = (SOME(0), STATE([], 1, 1))*)
 
 fun parse_forms (STATE([], line, col)) = []
   | parse_forms state =
@@ -226,4 +228,4 @@ fun parse text =
     print (String.implode (get_unparsed_text skipped)))
   end
 
-val x = parse_definition (STATE((String.explode "( define x0 := 4;\n"), 1, 1)) true
+val x = parse_identifier (STATE((String.explode "    \n definex0? := 4;\n"), 1, 1)) true
