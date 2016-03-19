@@ -1,5 +1,12 @@
+(*TODO: remove "fail" conditions from functions;
+* add try_parse_* functions, and let main ones fail
+*)
+
 (* tuples of: unparsed text, line, column *)
-datatype ParseState = STATE of char list * int * int
+type line = int
+type column = int
+type text = char list
+datatype ParseState = STATE of text * line * column
 
 fun get_unparsed_text (STATE(text, _, _)) = text
 fun get_line_num (STATE(_, l, _)) = l
