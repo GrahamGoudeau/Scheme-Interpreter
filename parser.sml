@@ -186,23 +186,43 @@ fun parse_identifier (STATE([], line, col)) fail =
       (ident, rest_state)
   end
 
+fun parse_expression state =
+  (SOME(0), state)
 
-fun parse_definition state fail =
+fun parse_definition state =
   let
     val skip_ws_state1 = skip_whitespace state
     val (open_paren, open_paren_state) =
-      parse_open_paren skip_ws_state1 fail
+      parse_open_paren skip_ws_state1 true
     val skip_ws_state2 =
       skip_whitespace open_paren_state
     val (define_lit, define_lit_state) =
-      parse_literal skip_ws_state2 "define" fail
+      parse_literal skip_ws_state2 "define" true
     val skip_ws_state3 =
       skip_whitespace define_lit_state
-    (*val (ident, ident_state)*)
+    val (ident, ident_state) =
+      parse_identifier skip_ws_state3 true
+    val skip_ws_state4 =
+      skip_whitespace ident_state
+    val (expr, expr_state) =
+      parse_expression skip_ws_state4
   in
-    (SOME(0), define_lit_state)
+    (SOME(0), ident_state)
 end
 
+(* returns true if the next tokens are "(define" *)
+fun try_parse_definition state =
+  let
+    val skip_ws_state1 = skip_whitespace state
+    val (open_paren, open_paren_state) =
+      parse_open_paren skip_ws_state1 false
+    val skip_ws_state2 = skip_whitespace open_paren_state
+    val (define_lit, define_lit_state) =
+      if open_paren = NONE then (NONE, state)
+      else parse_literal skip_ws_state2 "define" false
+
+  in (not (define_lit = NONE))
+  end
 
 fun parse_forms (STATE([], line, col)) = []
   | parse_forms state =
@@ -211,9 +231,9 @@ fun parse_forms (STATE([], line, col)) = []
               List.rev forms
           | accumulate_forms state forms =
           let
-            val (def_node, def_state) = parse_definition state true
+            val (def_node, def_state) = parse_definition state
             val (expr_node, expr_state) = (*parse_expression state*)
-                  (SOME(0), STATE([], 1, 1))
+                  (SOME(0), (STATE([], 1, 1)))
             val (final_node, final_state) = if def_node = NONE then
                                               (expr_node, expr_state)
                                             else (def_node, def_state)
@@ -235,4 +255,5 @@ fun parse text =
     print (String.implode (get_unparsed_text skipped)))
   end
 
-val x = parse_identifier (STATE((String.explode "    \n definex0? := 4;\n"), 1, 1)) true
+val x = parse_identifier (STATE((String.explode "    \n de.finex0? := 4;\n"), 1, 1)) true
+val y = try_parse_definition (STATE((String.explode " ( \ndefine  x\n"), 1, 1))
