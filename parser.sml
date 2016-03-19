@@ -90,9 +90,13 @@ fun parse_open_paren state fail =
 (*fun parse_definition _ = (SOME(0), STATE([], 1, 1))*)
 fun parse_definition state fail =
   let
-    val (open_paren, open_paren_state) = parse_open_paren state fail
+    val skip_ws_state1 = skip_whitespace state
+    val (open_paren, open_paren_state) =
+      parse_open_paren skip_ws_state1 fail
+    val skip_ws_state2 =
+      skip_whitespace open_paren_state
     val (define_lit, define_lit_state) =
-      parse_literal open_paren_state "define" fail
+      parse_literal skip_ws_state2 "define" fail
   in
     (SOME(0), define_lit_state)
 end
@@ -130,4 +134,4 @@ fun parse text =
     print (String.implode (get_unparsed_text skipped)))
   end
 
-val x = parse_definition (STATE((String.explode "(def x0 := 4;\n"), 1, 1)) true
+val x = parse_definition (STATE((String.explode "( define x0 := 4;\n"), 1, 1)) true
