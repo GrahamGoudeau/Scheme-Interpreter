@@ -70,11 +70,12 @@ fun skip_whitespace (STATE([], l, c)) = STATE([], l, c)
       end
   | skip_whitespace state = state
 
-(* expects a string literal as a string; the function will explode it *)
+(* expects a string literal as a string *)
 fun parse_literal original_state literal fail =
   let
     val lit = String.explode literal
 
+    (* produces as much of the literal in acc as possible *)
     fun consume_literal (STATE((t::ts), line, col)) (l :: ls) acc =
       if t = l then consume_literal (STATE(ts, line, (col + 1))) ls (l::acc)
       else (false, original_state, (List.rev acc))
@@ -91,7 +92,7 @@ fun parse_literal original_state literal fail =
         raise_error original_state (LIT_NOT_FOUND("Literal \"" ^
                                   (String.implode lit) ^
                                   "\" expected but not found; " ^
-                                  "\"" ^ 
+                                  "\"" ^
                                   (String.implode acc) ^
                                   "\" found instead"))
       else (NONE, original_state)
