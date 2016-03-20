@@ -93,7 +93,7 @@ fun skip_whitespace (STATE([], l, c)) = STATE([], l, c)
   | skip_whitespace state = state
 
 (* expects a string literal as a string *)
-fun parse_literal original_state literal fail =
+fun parse_str_literal original_state literal fail =
   let
     val lit = String.explode literal
 
@@ -119,10 +119,10 @@ fun parse_literal original_state literal fail =
   end
 
 fun parse_open_paren state fail =
-  parse_literal state "(" fail
+  parse_str_literal state "(" fail
 
 fun parse_close_paren state fail =
-  parse_literal state ")" fail
+  parse_str_literal state ")" fail
 
 fun member_char (elem : char) (xs : char list) = List.exists (fn x => x = elem) xs
 fun member_string (elem:string) (xs:string list) =
