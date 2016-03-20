@@ -241,7 +241,7 @@ fun try_parse_val_or_func_definition val_or_func_str state =
     val skip_ws_state2 = skip_whitespace open_paren_state
     val (define_lit, define_lit_state) =
       if open_paren = NONE then (NONE, state)
-      else parse_literal skip_ws_state2 val_or_func_str false
+      else parse_str_literal skip_ws_state2 val_or_func_str false
 
   in (not (define_lit = NONE))
   end
@@ -259,7 +259,7 @@ fun parse_val_definition state =
         parse_open_paren state true
       val skip_ws_state1 = skip_whitespace open_paren_state
       val (define_lit, define_lit_state) =
-        parse_literal skip_ws_state1 "val" true
+        parse_str_literal skip_ws_state1 "val" true
       val skip_ws_state2 = skip_whitespace define_lit_state
       val (SOME(ident), ident_state) =
         parse_identifier skip_ws_state2 true
@@ -278,7 +278,7 @@ fun parse_func_definition state =
         parse_open_paren state true
       val skip_ws_state1 = skip_whitespace open_paren_state
       val (define_lit, define_lit_state) =
-        parse_literal skip_ws_state1 "define" true
+        parse_str_literal skip_ws_state1 "define" true
       val skip_ws_state2 = skip_whitespace define_lit_state
       val (SOME(ident), ident_state) =
         parse_identifier skip_ws_state2 true
