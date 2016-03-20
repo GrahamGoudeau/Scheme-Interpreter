@@ -155,7 +155,7 @@ fun parse_identifier (STATE([], line, col)) fail =
           else ((List.rev acc), (STATE((c::cs), line, col)))
     val (ident, ident_state) = accumulate state []
   in
-    if ident = [] then
+    if ident = [] orelse (char_list_is_int ident) then
       if fail then
         raise_error ident_state (EXPECTED_IDENT("Expected identifier"))
       else
