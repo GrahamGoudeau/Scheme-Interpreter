@@ -232,42 +232,6 @@ fun parse_expression state =
         (EXPECTED_EXPR("Expected expression"))
   end
 
-(*
-fun parse_val_or_func_definition val_or_func_str state =
-  let
-    val skip_ws_state1 = skip_whitespace state
-    val (open_paren, open_paren_state) =
-      parse_open_paren skip_ws_state1 true
-    val skip_ws_state2 =
-      skip_whitespace open_paren_state
-    val (define_lit, define_lit_state) =
-      parse_literal skip_ws_state2 val_or_func_str true
-    val skip_ws_state3 =
-      skip_whitespace define_lit_state val (SOME(ident), ident_state) =
-      parse_identifier skip_ws_state3 true
-    val skip_ws_state4 =
-      skip_whitespace ident_state
-    val (expr, expr_state) =
-      parse_expression skip_ws_state4
-    val skip_ws_state5 =
-      skip_whitespace expr_state
-    val (close_paren, close_paren_state) =
-      parse_close_paren skip_ws_state5 true
-  in
-    if val_or_func_str = "val" then
-      ((VAL(String.implode ident, expr)), close_paren_state)
-    else if val_or_func_str = "define" then
-      raise Match
-         else raise Match
-end
-
-fun parse_val_definition state =
-  parse_val_or_func_definition "val" state
-
-fun parse_func_definition state =
-  parse_val_or_func_definition "define" state
-*)
-
 (* returns true if the next tokens are "(define" *)
 fun try_parse_val_or_func_definition val_or_func_str state =
   let
