@@ -312,5 +312,26 @@ fun parse text =
     print (String.implode (get_unparsed_text skipped)))
   end
 
-val x = parse_identifier (STATE((String.explode "    \n de.finex0? := 4;\n"), 1, 1)) true
-val y = try_parse_definition (STATE((String.explode " ( \ndefine  x\n"), 1, 1))
+  *)
+fun test_suite do_run =
+  if do_run then
+    let
+      val default_state = (STATE([], 1, 1))
+      val (test_ident1, _) = parse_identifier (STATE((String.explode "    \n de.finex0? := 4;\n"), 1,
+        1)) true
+      val (test_ident2, _) = parse_identifier (STATE((String.explode "  (let"), 1, 1))
+        false
+    in
+      (if not (test_ident1 = (SOME([#"d", #"e"]))) then
+        raise_error default_state (TEST_FAILED("Identifier test 1 fail"))
+       else 1;
+       if not (test_ident2 = NONE) then
+         raise_error default_state (TEST_FAILED("Ident test 2 fail"))
+       else 1)
+    end
+ else 1
+
+val x = test_suite do_test
+val y = parse_val_definition (STATE((String.explode "(val \n x0 p?)", 1, 1)))
+val z = parse_func_definition (STATE((String.explode "(define f (x y z33)x0)\n\n"),
+1, 1))
