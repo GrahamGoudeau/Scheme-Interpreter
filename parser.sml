@@ -104,16 +104,44 @@ fun parse_literal original_state literal fail =
       if fail then
         raise_error original_state (LIT_NOT_FOUND("Literal \"" ^
                                   (String.implode lit) ^
-                                  "\" expected but not found; " ^
-                                  "\"" ^
-                                  (String.implode acc) ^
-                                  "\" found instead"))
+                                  "\" expected but not found"))
       else (NONE, original_state)
   end
 
 fun parse_open_paren state fail =
   parse_literal state "(" fail
 
+fun parse_close_paren state fail =
+  parse_literal state ")" fail
+
+fun member_char (elem : char) (xs : char list) = List.exists (fn x => x = elem) xs
+
+(* reflects Ramsey 137 of Build, Prove, Compare *)
+fun parse_identifier (STATE([], line, col)) fail =
+  if fail then raise_error (STATE([], line, col))
+                           (EXPECTED_IDENT("Expected identifier"))
+  else (NONE, (STATE([], line, col)))
+  | parse_identifier state fail =
+  let
+    val invalid_chars = [#"(", #")", #";"]
+    fun accumulate (STATE([], line, col)) acc = ((List.rev acc), (STATE([],
+      line, col)))
+      | accumulate (STATE((c::cs), line, col)) acc =
+          if (not (Char.isSpace c)) andalso
+            (Char.isAlpha c orelse (not (member_char c invalid_chars))) then
+            accumulate (STATE(cs, line, col + 1)) (c::acc)
+          else ((List.rev acc), (STATE((c::cs), line, col)))
+    val (ident, ident_state) = accumulate state []
+  in
+    if ident = [] then
+      if fail then
+        raise_error ident_state (EXPECTED_IDENT("Expected identifier"))
+      else
+        (NONE, ident_state)
+    else
+      (SOME(ident), ident_state)
+  end
+(*
 fun parse_identifier (STATE([], line, col)) fail =
   if fail then
     raise_error
@@ -191,6 +219,14 @@ fun parse_identifier (STATE([], line, col)) fail =
     else
       (ident, rest_state)
   end
+  *)
+
+fun try_parse_identifier state =
+      let
+        val (ident, ident_state) = parse_identifier state false
+      in (not (ident = NONE))
+      end
+
 
 fun parse_expression state =
   (SOME(0), state)
