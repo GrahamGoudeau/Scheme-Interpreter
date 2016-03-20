@@ -216,12 +216,17 @@ end
 (* returns (VAR(...), new state) *)
 fun parse_expression state =
   let val skip_ws_state = skip_whitespace state
+      val (open_paren, open_state) = parse_open_paren skip_ws_state false
   in
     if try_parse_identifier skip_ws_state then
       let val (SOME(ident), ident_state) = parse_identifier skip_ws_state false
       in ((VAR(String.implode ident)), ident_state)
       end
-    else
+    else if try_parse_integer skip_ws_state then
+      let val ((SOME(num)), int_state) = parse_integer skip_ws_state true
+      in ((LIT(num)), int_state)
+      end
+    else 
       raise_error
         skip_ws_state
         (EXPECTED_EXPR("Expected expression"))
