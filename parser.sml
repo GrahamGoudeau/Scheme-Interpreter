@@ -170,6 +170,48 @@ fun try_parse_identifier state =
       in (not (ident = NONE))
       end
 
+fun parse_integer (STATE([], line, col)) fail =
+  if fail then
+    raise_error (STATE([], line, col)) (EXPECTED_INT("Expected int"))
+  else (NONE, (STATE([], line, col)))
+  | parse_integer (STATE((c::cs), line, col)) fail =
+let
+  fun accumulate (STATE([], line, col)) acc =
+        (List.rev acc, (STATE([], line, col)))
+    | accumulate (STATE((c::cs), line, col)) acc =
+        if Char.isDigit c then
+          accumulate (STATE(cs, line, col + 1)) (c::acc)
+        else (List.rev acc, (STATE((c::cs), line, col)))
+  val (integer, int_state) = accumulate (STATE((cs), line, col)) []
+  val full_int = (c::integer)
+in
+  if integer = [] orelse (not (char_list_is_int full_int)) then
+    if fail then
+      raise_error (STATE((c::cs), line, col)) (EXPECTED_INT("Expected int"))
+    else (NONE, (STATE((c::cs), line, col)))
+  else 
+    let
+      val (SOME(converted_int)) = Int.fromString (String.implode full_int)
+    in
+      (SOME(NUM(converted_int)), int_state)
+    end
+end
+
+fun try_parse_integer state =
+let
+  val (integer, int_state) = parse_integer state false
+in
+  not (integer = NONE)
+end
+
+fun parse_grammar_literal state =
+let
+  val is_integer = try_parse_integer state
+in
+  if is_integer then 4(*parse_integer state*)
+  else
+    raise Match
+end
 
 (* returns (VAR(...), new state) *)
 fun parse_expression state =
