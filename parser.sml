@@ -120,7 +120,18 @@ fun parse_close_paren state fail =
   parse_literal state ")" fail
 
 fun member_char (elem : char) (xs : char list) = List.exists (fn x => x = elem) xs
+fun member_string (elem:string) (xs:string list) =
+  List.exists (fn x => x = elem) xs
 
+fun char_list_is_int [] = false
+  | char_list_is_int (c::cs) =
+    let
+      val rest_is_int = List.all (fn d => Char.isDigit d) cs
+    in ((Char.isDigit c) andalso rest_is_int) orelse
+       ((c = #"-") andalso rest_is_int)
+    end
+       
+       
 (* reflects Ramsey 137 of Build, Prove, Compare *)
 (* returns (option(ident), state) *)
 fun parse_identifier (STATE([], line, col)) fail =
