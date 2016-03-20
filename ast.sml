@@ -1,6 +1,14 @@
 type identifier = string
 datatype let_type = LET | LET_STAR | LET_REC
 
+datatype value = NIL
+               | BOOL of bool
+               | NUM of int
+               | SYM of identifier
+               | PAIR of value * value
+               | CLOSURE of lambda * env
+               | PRIMITIVE of string
+
 datatype exp = LIT of value
              | VAR of identifier
              | SET of identifier * exp
@@ -19,13 +27,6 @@ datatype def = VAL of identifier * exp
 
 datatype env = ENV of (identifier * expr) list
 
-datatype value = NIL
-               | BOOL of bool
-               | NUM of int
-               | SYM of identifier
-               | PAIR of value * value
-               | CLOSURE of lambda * env
-               | PRIMITIVE of string
 (* maps variable names to expressions *)
 
 val new_env = (ENV([]))
