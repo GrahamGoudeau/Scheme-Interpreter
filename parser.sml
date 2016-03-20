@@ -122,6 +122,7 @@ fun parse_close_paren state fail =
 fun member_char (elem : char) (xs : char list) = List.exists (fn x => x = elem) xs
 
 (* reflects Ramsey 137 of Build, Prove, Compare *)
+(* returns (option(ident), state) *)
 fun parse_identifier (STATE([], line, col)) fail =
   if fail then raise_error (STATE([], line, col))
                            (EXPECTED_IDENT("Expected identifier"))
@@ -154,7 +155,7 @@ fun try_parse_identifier state =
       end
 
 
-(* should return (VAR(...), new state) *)
+(* returns (VAR(...), new state) *)
 fun parse_expression state =
   let val skip_ws_state = skip_whitespace state
   in
