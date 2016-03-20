@@ -90,7 +90,8 @@ fun parse_literal original_state literal fail =
     (* produces as much of the literal in acc as possible *)
     fun consume_literal (STATE((t::ts), line, col)) (l :: ls) acc =
       if t = l then consume_literal (STATE(ts, line, (col + 1))) ls (l::acc)
-      else (false, original_state, (List.rev acc))
+      else (false, original_state, (List.rev (t::acc)))
+
       | consume_literal (STATE([], line, col)) (l :: ls) acc =
           (false, original_state, (List.rev acc))
       | consume_literal state [] acc = (true, state, (List.rev acc))
