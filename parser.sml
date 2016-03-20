@@ -12,16 +12,17 @@ fun get_unparsed_text (STATE(text, _, _)) = text
 fun get_line_num (STATE(_, l, _)) = l
 fun get_col_num (STATE(_, _, c)) = c
 
-datatype form = DEFN of defn_type * identifier
-and identifier = string
-and defn_type = int
-
+exception TestFailed
 exception TabCharacterFound
 exception LiteralNotFound
 exception ExpectedIdentifier
-datatype error = TAB of string
-               | LIT_NOT_FOUND of string
-               | EXPECTED_IDENT of string
+exception ExpectedExpression
+type error_message = string
+datatype error = TAB of error_message
+               | LIT_NOT_FOUND of error_message
+               | EXPECTED_IDENT of error_message
+               | TEST_FAILED of error_message
+               | EXPECTED_EXPR of error_message
 
 (* expects a list of SOME(chars), returns a list of just
  * the chars.  Raises exception if there is a NONE in the list *)
@@ -44,6 +45,10 @@ fun raise_error (STATE(_, l, c)) error =
           (print (get_msg msg); raise LiteralNotFound)
       | handle_error (EXPECTED_IDENT(msg)) =
           (print (get_msg msg); raise ExpectedIdentifier)
+      | handle_error (TEST_FAILED(msg)) =
+          (print (get_msg msg); raise TestFailed)
+      | handle_error (EXPECTED_EXPR(msg)) =
+          (print (get_msg msg); raise ExpectedExpression)
   in
     handle_error error
   end
