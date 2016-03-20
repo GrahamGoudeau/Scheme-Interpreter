@@ -125,8 +125,8 @@ fun parse_identifier (STATE([], line, col)) fail =
   | parse_identifier state fail =
   let
     val invalid_chars = [#"(", #")", #";"]
-    fun accumulate (STATE([], line, col)) acc = ((List.rev acc), (STATE([],
-      line, col)))
+    fun accumulate (STATE([], line, col)) acc =
+          ((List.rev acc), (STATE([],line, col)))
       | accumulate (STATE((c::cs), line, col)) acc =
           if (not (Char.isSpace c)) andalso
             (Char.isAlpha c orelse (not (member_char c invalid_chars))) then
