@@ -53,6 +53,7 @@ fun raise_error (STATE(_, l, c)) error =
     handle_error error
   end
 
+  (* should rewrite as general strip comment function *)
 fun skip_comment (STATE([], l, c)) = STATE([], l, c)
   | skip_comment (STATE((#";"::cs), l, c)) =
     let
@@ -228,6 +229,7 @@ fun try_parse_identifier state =
       end
 
 
+(* should return (VAR(...), new state) *)
 fun parse_expression state =
   let val skip_ws_state = skip_whitespace state
   in
