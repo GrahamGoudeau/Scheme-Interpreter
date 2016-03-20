@@ -169,7 +169,8 @@ fun parse_expression state =
         (EXPECTED_EXPR("Expected expression"))
   end
 
-fun parse_definition state =
+(*
+fun parse_val_or_func_definition val_or_func_str state =
   let
     val skip_ws_state1 = skip_whitespace state
     val (open_paren, open_paren_state) =
@@ -177,21 +178,35 @@ fun parse_definition state =
     val skip_ws_state2 =
       skip_whitespace open_paren_state
     val (define_lit, define_lit_state) =
-      parse_literal skip_ws_state2 "define" true
+      parse_literal skip_ws_state2 val_or_func_str true
     val skip_ws_state3 =
-      skip_whitespace define_lit_state
-    val (ident, ident_state) =
+      skip_whitespace define_lit_state val (SOME(ident), ident_state) =
       parse_identifier skip_ws_state3 true
     val skip_ws_state4 =
       skip_whitespace ident_state
     val (expr, expr_state) =
       parse_expression skip_ws_state4
+    val skip_ws_state5 =
+      skip_whitespace expr_state
+    val (close_paren, close_paren_state) =
+      parse_close_paren skip_ws_state5 true
   in
-    (SOME(0), ident_state)
+    if val_or_func_str = "val" then
+      ((VAL(String.implode ident, expr)), close_paren_state)
+    else if val_or_func_str = "define" then
+      raise Match
+         else raise Match
 end
 
+fun parse_val_definition state =
+  parse_val_or_func_definition "val" state
+
+fun parse_func_definition state =
+  parse_val_or_func_definition "define" state
+*)
+
 (* returns true if the next tokens are "(define" *)
-fun try_parse_definition state =
+fun try_parse_val_or_func_definition val_or_func_str state =
   let
     val skip_ws_state1 = skip_whitespace state
     val (open_paren, open_paren_state) =
@@ -199,33 +214,95 @@ fun try_parse_definition state =
     val skip_ws_state2 = skip_whitespace open_paren_state
     val (define_lit, define_lit_state) =
       if open_paren = NONE then (NONE, state)
-      else parse_literal skip_ws_state2 "define" false
+      else parse_literal skip_ws_state2 val_or_func_str false
 
   in (not (define_lit = NONE))
   end
 
-fun parse_forms (STATE([], line, col)) = []
-  | parse_forms state =
-      let
-        fun accumulate_forms (STATE([], _, _)) forms =
-              List.rev forms
-          | accumulate_forms state forms =
+fun try_parse_val_definition state =
+  try_parse_val_or_func_definition "val" state
+
+fun try_parse_func_definition state =
+  try_parse_val_or_func_definition "define" state
+
+(* returns (VAL(ident, exp), state) *)
+fun parse_val_definition state =
+    let
+      val (open_paren, open_paren_state) =
+        parse_open_paren state true
+      val skip_ws_state1 = skip_whitespace open_paren_state
+      val (define_lit, define_lit_state) =
+        parse_literal skip_ws_state1 "val" true
+      val skip_ws_state2 = skip_whitespace define_lit_state
+      val (SOME(ident), ident_state) =
+        parse_identifier skip_ws_state2 true
+      val skip_ws_state3 = skip_whitespace ident_state
+      val (expr, expr_state) =
+        parse_expression skip_ws_state3
+      val skip_ws_state4 = skip_whitespace expr_state
+      val (close_paren, close_paren_state) =
+        parse_close_paren skip_ws_state4 true
+    in ((VAL(String.implode ident, expr)), close_paren_state)
+    end
+
+fun parse_func_definition state =
+    let
+      val (open_paren, open_paren_state) =
+        parse_open_paren state true
+      val skip_ws_state1 = skip_whitespace open_paren_state
+      val (define_lit, define_lit_state) =
+        parse_literal skip_ws_state1 "define" true
+      val skip_ws_state2 = skip_whitespace define_lit_state
+      val (SOME(ident), ident_state) =
+        parse_identifier skip_ws_state2 true
+      val skip_ws_state3 = skip_whitespace ident_state
+      val (open_paren2, open_paren_state2) =
+        parse_open_paren skip_ws_state3 true
+      fun accumulate_params (STATE([], line, col)) params =
+        (List.rev params, (STATE([], line, col)))
+        | accumulate_params (STATE((c::cs), line, col)) params =
+            if Char.isSpace c then accumulate_params (STATE(cs, line, col + 1)) params
+            else if c = #")" then (List.rev params, (STATE(cs, line, col + 1)))
+            else
           let
-            val (def_node, def_state) = parse_definition state
-            val (expr_node, expr_state) = (*parse_expression state*)
-                  (SOME(0), (STATE([], 1, 1)))
-            val (final_node, final_state) = if def_node = NONE then
-                                              (expr_node, expr_state)
-                                            else (def_node, def_state)
-          in
-            accumulate_forms final_state (final_node :: forms)
+            val skip_ws_state = skip_whitespace (STATE((c::cs), line, col))
+            val (SOME(ident), ident_state) =
+              parse_identifier skip_ws_state true
+          in accumulate_params ident_state (ident::params)
           end
-      in
-        accumulate_forms state []
+      val (params, param_state) = accumulate_params open_paren_state2 []
+      val skip_ws_state4 = skip_whitespace param_state
+      val (exp, exp_state) =
+        parse_expression skip_ws_state4
+      val skip_ws_state5 = skip_whitespace exp_state
+      val (closed_paren, closed_paren_state) =
+        parse_close_paren skip_ws_state5 true
+    in ((DEFINE(String.implode ident,
+                (((List.map (fn s => String.implode s) params): identifier list),
+                exp))),
+        closed_paren_state)
+    end
+(* returns (def, state) *)
+(*
+fun parse_def (STATE((c::cs), line, col)) =
+      let
+        val skipped_ws_state = skip_whitespace (STATE((c::cs), line, col))
+        val is_val_def = try_parse_val_definition skipped_ws_state
+        val is_func_def = try_parse_func_definition skipped_ws_state
+        (* val is_check-expect *)
+        val (ast_node, ast_state) =
+          if is_val_def then parse_val_definition skipped_ws_state
+          else if is_func_def then parse_func_definition skipped_ws_state
+          else
+            raise_error (STATE((c::cs), line, col))
+                        (EXPECTED_DEF("Expected definition"))
+      in (ast_node, ast_state)
       end
+*)
 
 
 (* expects a list of characters, not a string *)
+(*
 fun parse text =
   let
     val init_state = STATE(text, 1, 1)
