@@ -17,12 +17,14 @@ exception TabCharacterFound
 exception LiteralNotFound
 exception ExpectedIdentifier
 exception ExpectedExpression
+exception ExpectedDefinition
 type error_message = string
 datatype error = TAB of error_message
                | LIT_NOT_FOUND of error_message
                | EXPECTED_IDENT of error_message
                | TEST_FAILED of error_message
                | EXPECTED_EXPR of error_message
+               | EXPECTED_DEF of error_message
 
 (* expects a list of SOME(chars), returns a list of just
  * the chars.  Raises exception if there is a NONE in the list *)
@@ -49,6 +51,8 @@ fun raise_error (STATE(_, l, c)) error =
           (print (get_msg msg); raise TestFailed)
       | handle_error (EXPECTED_EXPR(msg)) =
           (print (get_msg msg); raise ExpectedExpression)
+      | handle_error (EXPECTED_DEF(msg)) =
+          (print (get_msg msg); raise ExpectedDefinition)
   in
     handle_error error
   end
