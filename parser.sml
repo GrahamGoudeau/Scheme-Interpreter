@@ -229,7 +229,17 @@ fun try_parse_identifier state =
 
 
 fun parse_expression state =
-  (SOME(0), state)
+  let val skip_ws_state = skip_whitespace state
+  in
+    if try_parse_identifier skip_ws_state then
+      let val (SOME(ident), ident_state) = parse_identifier skip_ws_state false
+      in ((VAR(String.implode ident)), ident_state)
+      end
+    else
+      raise_error
+        skip_ws_state
+        (EXPECTED_EXPR("Expected expression"))
+  end
 
 fun parse_definition state =
   let
