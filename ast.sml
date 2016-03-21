@@ -6,10 +6,12 @@ datatype value = NIL
                | NUM of int
                | SYM of identifier
                | PAIR of value * value
-               | CLOSURE of lambda * env
+               | CLOSURE of ((identifier list) * exp) * ((identifier * exp)
+               list)
                | PRIMITIVE of string
+and
 
-datatype exp = LIT of value
+exp = LIT of value
              | VAR of identifier
              | SET of identifier * exp
              | IFX of exp * exp * exp
@@ -17,7 +19,6 @@ datatype exp = LIT of value
              | BEGIN of exp list
              | APPLY of exp * (exp list)
              | LETX of let_type * (identifier list) * (exp list) * exp
-             (*| LAMBDA of (identifier list) * exp*)
              | LAMBDA of lambda
              withtype lambda = (identifier list) * exp
 
@@ -25,10 +26,3 @@ datatype def = VAL of identifier * exp
              | EXP of exp
              | DEFINE of identifier * lambda
 
-datatype env = ENV of (identifier * expr) list
-
-(* maps variable names to expressions *)
-
-val new_env = (ENV([]))
-
-fun bind (key, expr) (ENV(xs)) = (ENV((key, expr)::xs))

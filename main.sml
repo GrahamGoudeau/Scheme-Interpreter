@@ -1,8 +1,9 @@
 fun get_chars_from_filestream in_file =
-  let fun accumulate NONE = []
-        | accumulate c = (c :: (accumulate (TextIO.input1 in_file)))
-      val some_chars = accumulate (TextIO.input1 in_file)
-  in List.map (fn SOME c => c | NONE => #"0") some_chars
+  let
+    val default_state = (STATE([], ~1, ~1))
+    fun accumulate NONE = []
+        | accumulate c = ((strip_option default_state c) :: (accumulate (TextIO.input1 in_file)))
+  in accumulate (TextIO.input1 in_file)
   end
 
 exception ImproperUsage

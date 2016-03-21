@@ -2,6 +2,8 @@
 * add try_parse_* functions, and let main ones fail
 *)
 
+val do_test = false
+
 (* tuples of: unparsed text, line, column *)
 type line = int
 type column = int
@@ -19,6 +21,9 @@ exception ExpectedIdentifier
 exception ExpectedExpression
 exception ExpectedDefinition
 exception ExpectedInt
+exception ExpectedBool
+exception UnexpectedException
+
 type error_message = string
 datatype error = TAB of error_message
                | LIT_NOT_FOUND of error_message
@@ -27,15 +32,14 @@ datatype error = TAB of error_message
                | EXPECTED_EXPR of error_message
                | EXPECTED_DEF of error_message
                | EXPECTED_INT of error_message
+               | EXPECTED_BOOL of error_message
+               | UNEXPECTED
 
 (* expects a list of SOME(chars), returns a list of just
  * the chars.  Raises exception if there is a NONE in the list *)
 fun strip_option_list [] = []
   | strip_option_list ((SOME(c)::cs)) = (c::(strip_option_list cs))
   | strip_option_list (NONE::cs) = raise Match
-
-fun strip_option_char (SOME(c)) = c
-  | strip_option_char _ = raise Match
 
 fun raise_error (STATE(_, l, c)) error =
   let
@@ -57,10 +61,18 @@ fun raise_error (STATE(_, l, c)) error =
           (print (get_msg msg); raise ExpectedDefinition)
       | handle_error (EXPECTED_INT(msg)) =
           (print (get_msg msg); raise ExpectedInt)
+      | handle_error (EXPECTED_BOOL(msg)) =
+          (print (get_msg msg); raise ExpectedBool)
+      | handle_error (UNEXPECTED) =
+          (print (get_msg "Unexpected error occurred"); raise UnexpectedException)
 
   in
     handle_error error
   end
+
+
+fun strip_option _ (SOME(c)) = c
+  | strip_option state NONE = raise_error state UNEXPECTED
 
   (* should rewrite as general strip comment function *)
 fun skip_comment (STATE([], l, c)) = STATE([], l, c)
@@ -189,9 +201,10 @@ in
     if fail then
       raise_error (STATE((c::cs), line, col)) (EXPECTED_INT("Expected int"))
     else (NONE, (STATE((c::cs), line, col)))
-  else 
+  else
     let
-      val (SOME(converted_int)) = Int.fromString (String.implode full_int)
+      val converted_int =
+        strip_option int_state (Int.fromString (String.implode full_int))
     in
       (SOME(NUM(converted_int)), int_state)
     end
@@ -213,19 +226,50 @@ in
     raise Match
 end
 
+fun try_parse_boolean state =
+    let
+      val (true_lit, true_state) =
+        parse_str_literal state "#t" false
+      val (false_lit, false_state) =
+        parse_str_literal state "#f" false
+    in
+      (not (true_lit = NONE)) orelse (not (false_lit = NONE))
+    end
+
+    (*
+fun parse_boolean state fail =
+    let
+      val (true_lit, true_state) =
+        parse_str_literal state "#t" false
+      val (false_lit, false_state) =
+        parse_str_literal state "#f" false
+      val (bool_lit, bool_state) =
+        if (not (true_lit = NONE)) then (true_lit, true_state)
+        else if (not (false_lit = NONE)) then (false_lit, false_state)
+        else
+          if fail then
+            raise_error state (EXPECTED_BOOL("Expected boolean"))
+          else
+            (NONE, state)
+    in (bool_lit, bool_state)
+    *)
+
 (* returns (VAR(...), new state) *)
 fun parse_expression state =
   let val skip_ws_state = skip_whitespace state
       val (open_paren, open_state) = parse_open_paren skip_ws_state false
   in
     if try_parse_identifier skip_ws_state then
-      let val (SOME(ident), ident_state) = parse_identifier skip_ws_state false
+      let val (ident_option, ident_state) = parse_identifier skip_ws_state false
+          val ident = strip_option ident_state ident_option
       in ((VAR(String.implode ident)), ident_state)
       end
     else if try_parse_integer skip_ws_state then
-      let val ((SOME(num)), int_state) = parse_integer skip_ws_state true
+      let val (num_option, int_state) = parse_integer skip_ws_state true
+          val num = strip_option int_state num_option
       in ((LIT(num)), int_state)
       end
+    (*else if try_parse_boolean skip_ws_state then*)
     else 
       raise_error
         skip_ws_state
@@ -261,8 +305,9 @@ fun parse_val_definition state =
       val (define_lit, define_lit_state) =
         parse_str_literal skip_ws_state1 "val" true
       val skip_ws_state2 = skip_whitespace define_lit_state
-      val (SOME(ident), ident_state) =
+      val (ident_option, ident_state) =
         parse_identifier skip_ws_state2 true
+      val ident = strip_option ident_state ident_option
       val skip_ws_state3 = skip_whitespace ident_state
       val (expr, expr_state) =
         parse_expression skip_ws_state3
@@ -280,8 +325,9 @@ fun parse_func_definition state =
       val (define_lit, define_lit_state) =
         parse_str_literal skip_ws_state1 "define" true
       val skip_ws_state2 = skip_whitespace define_lit_state
-      val (SOME(ident), ident_state) =
+      val (ident_option, ident_state) =
         parse_identifier skip_ws_state2 true
+      val ident = strip_option ident_state ident_option
       val skip_ws_state3 = skip_whitespace ident_state
       val (open_paren2, open_paren_state2) =
         parse_open_paren skip_ws_state3 true
@@ -293,8 +339,9 @@ fun parse_func_definition state =
             else
           let
             val skip_ws_state = skip_whitespace (STATE((c::cs), line, col))
-            val (SOME(ident), ident_state) =
+            val (ident_option, ident_state) =
               parse_identifier skip_ws_state true
+            val ident = strip_option ident_state ident_option
           in accumulate_params ident_state (ident::params)
           end
       val (params, param_state) = accumulate_params open_paren_state2 []
@@ -309,11 +356,11 @@ fun parse_func_definition state =
                 exp))),
         closed_paren_state)
     end
+
 (* returns (def, state) *)
-(*
-fun parse_def (STATE((c::cs), line, col)) =
+fun parse_def state =
       let
-        val skipped_ws_state = skip_whitespace (STATE((c::cs), line, col))
+        val skipped_ws_state = skip_whitespace state
         val is_val_def = try_parse_val_definition skipped_ws_state
         val is_func_def = try_parse_func_definition skipped_ws_state
         (* val is_check-expect *)
@@ -321,25 +368,24 @@ fun parse_def (STATE((c::cs), line, col)) =
           if is_val_def then parse_val_definition skipped_ws_state
           else if is_func_def then parse_func_definition skipped_ws_state
           else
-            raise_error (STATE((c::cs), line, col))
-                        (EXPECTED_DEF("Expected definition"))
+            let
+              val (expr, expr_state) = parse_expression skipped_ws_state
+            in
+              ((EXP(expr)), expr_state)
+            end
       in (ast_node, ast_state)
       end
-*)
 
 
 (* expects a list of characters, not a string *)
-(*
 fun parse text =
   let
     val init_state = STATE(text, 1, 1)
     val skipped = skip_whitespace init_state
   in
-    (parse_forms init_state;
-    print (String.implode (get_unparsed_text skipped)))
+    parse_def skipped
   end
 
-  *)
 fun test_suite do_run =
   if do_run then
     let
@@ -359,6 +405,8 @@ fun test_suite do_run =
  else 1
 
 val x = test_suite do_test
-val y = parse_val_definition (STATE((String.explode "(val \n x0 p?)", 1, 1)))
-val z = parse_func_definition (STATE((String.explode "(define f (x y z33)x0)\n\n"),
+val y = parse_val_definition (STATE((String.explode "(val \n x0 -10)", 1, 1)))
+val z = parse_func_definition (STATE((String.explode "(define f () x0)\n\n"),
 1, 1))
+val a = parse_identifier (STATE((String.explode "1<a x"), 1, 1)) true
+val b = char_list_is_int (String.explode "-x4")
