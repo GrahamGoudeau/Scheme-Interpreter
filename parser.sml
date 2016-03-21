@@ -236,23 +236,19 @@ fun try_parse_boolean state =
       (not (true_lit = NONE)) orelse (not (false_lit = NONE))
     end
 
-    (*
-fun parse_boolean state fail =
+fun parse_boolean state =
     let
       val (true_lit, true_state) =
         parse_str_literal state "#t" false
       val (false_lit, false_state) =
         parse_str_literal state "#f" false
       val (bool_lit, bool_state) =
-        if (not (true_lit = NONE)) then (true_lit, true_state)
-        else if (not (false_lit = NONE)) then (false_lit, false_state)
+        if (not (true_lit = NONE)) then (true, true_state)
+        else if (not (false_lit = NONE)) then (false, false_state)
         else
-          if fail then
             raise_error state (EXPECTED_BOOL("Expected boolean"))
-          else
-            (NONE, state)
-    in (bool_lit, bool_state)
-    *)
+    in ((BOOL(bool_lit)), bool_state)
+    end
 
 (* returns (VAR(...), new state) *)
 fun parse_expression state =
@@ -269,7 +265,11 @@ fun parse_expression state =
           val num = strip_option int_state num_option
       in ((LIT(num)), int_state)
       end
-    (*else if try_parse_boolean skip_ws_state then*)
+    else if try_parse_boolean skip_ws_state then
+      let val (boolean, bool_state) = parse_boolean skip_ws_state
+      in
+        ((LIT(boolean), bool_state))
+      end
     else 
       raise_error
         skip_ws_state
