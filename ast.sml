@@ -4,7 +4,9 @@ datatype let_type = LET | LET_STAR | LET_REC
 datatype value = NIL
                | BOOL of bool
                | NUM of int
-               | SYM of identifier
+               | S_EXP_LIT of value
+               | S_EXP_SYM of identifier
+               | S_EXP_LIST of value list
                | PAIR of value * value
                | CLOSURE of ((identifier list) * exp) * ((identifier * exp)
                list)
