@@ -10,6 +10,8 @@ type column = int
 type text = char list
 datatype ParseState = STATE of text * line * column
 
+fun init_state text = (STATE(text, 1, 1))
+
 fun get_unparsed_text (STATE(text, _, _)) = text
 fun get_line_num (STATE(_, l, _)) = l
 fun get_col_num (STATE(_, _, c)) = c
@@ -420,10 +422,9 @@ fun parse_def state =
 
 
 (* expects a list of characters, not a string *)
-fun parse text =
+fun parse state =
   let
-    val init_state = STATE(text, 1, 1)
-    val skipped = skip_whitespace init_state
+    val skipped = skip_whitespace state
   in
     parse_def skipped
   end
