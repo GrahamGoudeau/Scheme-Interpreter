@@ -41,7 +41,7 @@ fun exp_to_string (LIT(value)) = value_to_string value
   | exp_to_string (VAR(var)) = "[var " ^ var ^ "]"
 
 fun print_def (VAL(ident, exp)) =
-  (print ("(val " ^ ident ^ exp_to_string exp ^ "\n"))
-  | print_def (EXP(exp)) = print ((exp_to_string exp) ^ "\n")
+  (print ("(val " ^ ident ^ " " ^ exp_to_string exp ^ ")\n"))
+  | print_def (EXP(exp)) = print ((exp_to_string exp) ^ ")\n")
   | print_def (DEFINE(ident, _)) =
   print ("(define " ^ ident ^ ")\n")
