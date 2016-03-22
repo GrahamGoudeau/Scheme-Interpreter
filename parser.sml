@@ -199,7 +199,7 @@ let
         if Char.isDigit c then
           accumulate (STATE(cs, line, col + 1)) (c::acc)
         else (List.rev acc, (STATE((c::cs), line, col)))
-  val (integer, int_state) = accumulate (STATE((cs), line, col)) []
+  val (integer, int_state) = accumulate (STATE((cs), line, col + 1)) []
   val full_int = (c::integer)
 in
   if (not (char_list_is_int full_int)) then
