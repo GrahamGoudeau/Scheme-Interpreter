@@ -22,6 +22,7 @@ exception ExpectedExpression
 exception ExpectedDefinition
 exception ExpectedInt
 exception ExpectedBool
+exception ExpectedLiteral
 exception UnexpectedException
 
 type error_message = string
@@ -33,6 +34,7 @@ datatype error = TAB of error_message
                | EXPECTED_DEF of error_message
                | EXPECTED_INT of error_message
                | EXPECTED_BOOL of error_message
+               | EXPECTED_LIT of error_message
                | UNEXPECTED
 
 (* expects a list of SOME(chars), returns a list of just
@@ -63,6 +65,8 @@ fun raise_error (STATE(_, l, c)) error =
           (print (get_msg msg); raise ExpectedInt)
       | handle_error (EXPECTED_BOOL(msg)) =
           (print (get_msg msg); raise ExpectedBool)
+      | handle_error (EXPECTED_LIT(msg)) =
+          (print (get_msg msg); raise ExpectedLiteral)
       | handle_error (UNEXPECTED) =
           (print (get_msg "Unexpected error occurred"); raise UnexpectedException)
 
