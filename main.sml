@@ -14,14 +14,29 @@ fun parse_args [] = (print_usage(); raise ImproperUsage)
   | parse_args [x] = x
   | parse_args _ = (print_usage(); raise ImproperUsage)
 
+fun parse_loop text =
+let
+  fun accumulate_defs (STATE([], line, col)) defs =
+    List.rev defs
+    | accumulate_defs state defs =
+    let val (def, def_state) = parse state
+        val skip_ws_state = skip_whitespace def_state
+    in
+      accumulate_defs skip_ws_state (def::defs)
+    end
+in
+  accumulate_defs (init_state text) []
+end
+
+
 fun main () =
   let val sys_argv = CommandLine.arguments()
       val input_filename = parse_args sys_argv
       val input_stream = TextIO.openIn input_filename
       val text = get_chars_from_filestream input_stream
-    val _ = TextIO.closeIn input_stream
-    val (def, new_state) = parse text
-  in print_def def
+      val _ = TextIO.closeIn input_stream
+      val defs = parse_loop text
+  in List.map (fn def => print_def def) defs
   end
 
 val t = main()
