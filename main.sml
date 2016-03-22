@@ -20,7 +20,8 @@ fun main () =
       val input_stream = TextIO.openIn input_filename
       val text = get_chars_from_filestream input_stream
     val _ = TextIO.closeIn input_stream
-  in parse text
+    val (def, new_state) = parse text
+  in print_def def
   end
 
 val t = main()

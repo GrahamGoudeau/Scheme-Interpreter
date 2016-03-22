@@ -446,9 +446,9 @@ fun test_suite do_run =
     end
  else 1
 
+(*
 val x = test_suite do_test
-val y = parse_val_definition (STATE((String.explode "(val \n x0 -10)", 1, 1)))
-val z = parse_func_definition (STATE((String.explode "(define f () x0)\n\n"),
-1, 1))
-val a = parse_identifier (STATE((String.explode "1<a x"), 1, 1)) true
-val b = char_list_is_int (String.explode "-x4")
+val s = String.explode
+val a = parse_boolean (STATE(s "#t   \n", 1, 1))
+val b = parse_def (STATE(s "(define f (z) #t)", 1, 1))
+*)
