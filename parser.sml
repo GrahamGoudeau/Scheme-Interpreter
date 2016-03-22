@@ -274,7 +274,7 @@ fun parse_expression state =
       in
         ((LIT(boolean), bool_state))
       end
-    else 
+    else
       raise_error
         skip_ws_state
         (EXPECTED_EXPR("Expected expression"))
