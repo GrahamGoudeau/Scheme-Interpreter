@@ -200,7 +200,7 @@ let
   val (integer, int_state) = accumulate (STATE((cs), line, col)) []
   val full_int = (c::integer)
 in
-  if integer = [] orelse (not (char_list_is_int full_int)) then
+  if (not (char_list_is_int full_int)) then
     if fail then
       raise_error (STATE((c::cs), line, col)) (EXPECTED_INT("Expected int"))
     else (NONE, (STATE((c::cs), line, col)))
@@ -295,7 +295,8 @@ fun parse_expression state =
   let val skip_ws_state = skip_whitespace state
       val (open_paren, open_state) = parse_open_paren skip_ws_state false
   in
-    if try_parse_identifier skip_ws_state then
+    if try_parse_identifier skip_ws_state andalso
+        (not (try_parse_boolean skip_ws_state)) then
       let val (ident_option, ident_state) = parse_identifier skip_ws_state false
           val ident = strip_option ident_state ident_option
       in ((VAR(String.implode ident)), ident_state)
