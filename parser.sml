@@ -324,6 +324,30 @@ fun parse_expression state =
       in
         ((LIT(boolean), bool_state))
       end
+    else if (not (open_paren = NONE)) then
+      let fun accumulate_exps (STATE([], line, col)) exps =
+                (*(List.rev exps, (STATE([], line, col)))*)
+                raise_syntax_error
+                  (STATE([], line, col))
+                  (EXPECTED_EXPR("Expected expression"))
+            | accumulate_exps (STATE((#")"::cs), line, col)) exps =
+                (List.rev exps, (STATE(cs, line, col + 1)))
+            | accumulate_exps (STATE((c::cs), line, col)) exps =
+                let
+                  val skipped_ws = skip_whitespace (STATE((c::cs), line, col))
+                  val (expr, expr_state) =
+                    parse_expression skipped_ws
+                in accumulate_exps expr_state (expr::exps)
+                end
+          val skipped_ws = skip_whitespace open_state
+          val (main_ident_option, ident_state) = parse_identifier skipped_ws true
+          val main_ident = String.implode (strip_option ident_state
+            main_ident_option)
+          val skipped_ws2 = skip_whitespace ident_state
+          val (exps, exps_state) = accumulate_exps skipped_ws2 []
+      in ((APPLY((VAR(main_ident)), exps)), exps_state)
+      end
+
     else
       raise_syntax_error
         skip_ws_state
