@@ -247,17 +247,26 @@ fun parse_boolean state fail =
     (*
 fun parse_s_exp state =
 let
-  val is_literal = try_parse_grammar_literal state
+  val is_int = try_parse_integer state
+  val is_boolean = try_parse_boolean state
   val is_ident = try_parse_identifier state
   val (is_sub_s_exp_option, sub_s_exp_state) = parse_open_paren state false
   val is_sub_s_exp = (not (is_sub_s_exp_option = NONE))
-  val (ast_node, ast_state) =
-    if is_literal then
-      parse_grammar_literal state true
-    else if is_ident then
-      parse_identifier state true
+in
+    if is_int then
+      let val (int_option, int_state) = parse_integer state true
+          val converted_int = strip_option int_state int_option
+      in
+        ((S_EXP_INT(converted_int)), int_state)
+      end
+    else if is_boolean then
+      let val (bool_option, bool_state) = parse_boolean state true
+          val converted_bool = strip_option bool_state bool_option
+      in ((S_EXP_BOOL(converted_bool)), bool_state)
+      end
     else if is_sub_s_exp then
       *)
+
 
 fun parse_grammar_literal state fail =
 let
@@ -272,16 +281,26 @@ let
       parse_boolean state true
       (*
     else if is_s_exp then
-      parse_s_exp state
+      let val (s_exp, s_exp_state) = parse_s_exp quote_state
+      in
+        ((S_EXP(s_exp)), s_exp_state)
+      end
       *)
     else(* if fail then*)
       raise_syntax_error state (EXPECTED_LIT("Expected literal (int, bool, or S-exp)"))
          (*else (NONE, state)*)
 in
-  0
+  (ast_node, ast_state)
 end
 
-fun try_parse_grammar_literal state = 3
+fun try_parse_grammar_literal state =
+  let
+    val (quote_lit, quote_state) = parse_str_literal state "'" false
+  in
+  (try_parse_integer state) orelse
+  (try_parse_boolean state) orelse
+  (not (quote_lit = NONE))
+  end
 
 (* returns (VAR(...), new state) *)
 fun parse_expression state =
