@@ -59,15 +59,27 @@ fun print_def (VAL(ident, exp)) =
 type error_message = string
 
 exception VariableNotBound
+exception UndefinedMethod
+exception InvalidMethodName
+exception MismatchFunctionArity
 
 datatype runtime_Error = VAR_NOT_BOUND of error_message
+                       | INVALID_METHOD of error_message
+                       | UNDEFINED_METHOD of error_message
+                       | MISMATCH_ARITY of error_message
 
 fun raise_runtime_error error =
   let
     val runtime_err_msg = "Runtime error encountered:\n\t - \""
     fun get_msg msg = runtime_err_msg ^ msg ^ "\"\n"
     fun handle_error (VAR_NOT_BOUND(msg)) =
-      (print (get_msg msg); raise VariableNotBound)
+          (print (get_msg msg); raise VariableNotBound)
+      | handle_error (INVALID_METHOD(msg)) =
+          (print (get_msg msg); raise InvalidMethodName)
+      | handle_error (UNDEFINED_METHOD(msg)) =
+          (print (get_msg msg); raise UndefinedMethod)
+      | handle_error (MISMATCH_ARITY(msg)) =
+          (print (get_msg msg); raise MismatchFunctionArity)
   in handle_error error
   end
 
@@ -86,15 +98,51 @@ fun print_all_env (xs: env) =
    print "\n")
 
 fun bind_env key value (xs: env) = (key, value)::xs
+
 fun find_env key [] =
       raise_runtime_error (VAR_NOT_BOUND("Var \"" ^ key ^ "\" not bound"))
   | find_env key ((ident, value)::xs) =
       if key = ident then value
       else find_env key xs
 
-
 fun eval (LIT(value)) env = (value, env)
   | eval (VAR(ident)) env = ((find_env ident env), env)
+  | eval (APPLY((VAR(ident)), exp_list)) env = 
+      let
+        val _ = print "Applying\n"
+        fun bind_args [] [] env = env
+          | bind_args (arg::args) (param::params) env =
+              bind_env param (eval arg env) env
+          | bind_args _ _ _ =
+              raise_runtime_error
+        val arguments = List.map (fn exp => eval exp) exp_list
+        val bound_value = find_env ident env
+        val closure = case bound_value of
+          (CLOSURE(((ident_list, body), captured_env))) => bound_value
+          | _ => 
+            raise_runtime_error
+              (UNDEFINED_METHOD("Method \"" ^ ident ^ "\" not found"))
+      (*in ((find_env ident env), env)*)
+      in
+      end
+  | eval (APPLY(exp, _)) env =
+      let
+        val (value, value_state) = eval exp env
+      in
+        (raise_runtime_error
+          (INVALID_METHOD("Method name \"" ^
+                          (value_to_string value) ^
+                          "\" is invalid")))
+      end
+  (*
+      let val (value, value_state) = eval exp
+      in
+      (raise_runtime_error
+        (INVALID_METHOD("Method name \"" ^
+                        (value_to_string value) ^
+                        "\" is invalid")))
+      end
+      *)
 
 fun execute defs =
       let

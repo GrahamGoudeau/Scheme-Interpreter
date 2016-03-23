@@ -481,9 +481,9 @@ fun test_suite do_run =
     end
  else 1
 
+val s = String.explode
 (*
 val x = test_suite do_test
-val s = String.explode
 val a = parse_boolean (STATE(s "#t   \n", 1, 1))
 val b = parse_def (STATE(s "(define f (z) #t)", 1, 1))
 *)

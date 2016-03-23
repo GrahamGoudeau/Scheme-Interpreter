@@ -19,7 +19,8 @@ let
   fun accumulate_defs (STATE([], line, col)) defs =
     List.rev defs
     | accumulate_defs state defs =
-    let val (def, def_state) = parse state
+    let 
+        val (def, def_state) = parse state
         val skip_ws_state = skip_whitespace def_state
     in
       accumulate_defs skip_ws_state (def::defs)
@@ -36,7 +37,7 @@ fun main () =
       val text = get_chars_from_filestream input_stream
       val _ = TextIO.closeIn input_stream
       val defs = parse_loop text
-      val _ = List.map (fn def => print_def def) defs
+      (*val _ = List.map (fn def => print_def def) defs*)
     val final_env = execute defs
   in print_all_env final_env
   end
