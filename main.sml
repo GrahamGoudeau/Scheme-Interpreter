@@ -41,6 +41,4 @@ fun main () =
   in print_all_env final_env
   end
 
-val t = main()
-val y = get_chars_from_filestream (TextIO.openIn "b.txt")
-val z = CommandLine.arguments()
+val _ = main ()
