@@ -173,7 +173,7 @@ fun parse_identifier (STATE([], line, col)) fail =
   in
     if ident = [] orelse (char_list_is_int ident) then
       if fail then
-        raise_syntax_error ident_state (EXPECTED_IDENT("Expected identifier"))
+        raise_syntax_error state (EXPECTED_IDENT("Expected identifier"))
       else
         (NONE, ident_state)
     else
