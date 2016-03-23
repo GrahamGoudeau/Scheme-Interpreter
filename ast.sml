@@ -6,8 +6,8 @@ datatype value = NIL
                | NUM of int
                | CLOSURE of
                    ((identifier list) * exp) * ((identifier * value) list)
-               | S_EXP of s_exp
                (*
+               | S_EXP of s_exp
                | S_EXP_LIT of value
                | S_EXP_SYM of identifier
                | S_EXP_LIST of value list
@@ -49,6 +49,10 @@ fun value_to_string (NIL) = "[value: NIL]"
 
 fun exp_to_string (LIT(value)) = value_to_string value
   | exp_to_string (VAR(var)) = "[var " ^ var ^ "]"
+  | exp_to_string (APPLY(ident, arg_list)) =
+      "[apply " ^ exp_to_string ident ^ " args: " ^
+        String.concat (List.map (fn arg => ((exp_to_string arg) ^ " "))
+        arg_list) ^ "]"
 
 fun print_def (VAL(ident, exp)) =
   (print ("(val " ^ ident ^ " " ^ exp_to_string exp ^ ")\n"))
@@ -147,26 +151,9 @@ fun eval (LIT(value)) env = (value, env)
       in
         (value, env)
       end
-      (*
   | eval (APPLY(exp, _)) env =
-      let
-        val (value, value_state) = eval exp env
-      in
-        (raise_runtime_error
-          (INVALID_METHOD("Method name \"" ^
-                          (value_to_string value) ^
-                          "\" is invalid")))
-      end
-      *)
-  (*
-      let val (value, value_state) = eval exp
-      in
-      (raise_runtime_error
-        (INVALID_METHOD("Method name \"" ^
-                        (value_to_string value) ^
-                        "\" is invalid")))
-      end
-      *)
+      raise_runtime_error (INVALID_METHOD("Invalid method name: \"" ^
+                           exp_to_string exp ^ "\""))
 
 fun execute defs =
       let
