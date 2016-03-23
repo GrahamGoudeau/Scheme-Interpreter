@@ -28,3 +28,14 @@ Standard ML was chosen as the language of implementation for several reasons.  T
     -   [ ] If-expressions `(if {exp} {exp} {exp})`
     -   [ ] Lambda expressions `(lambda ({ident}*) {exp})`
 - [ ] Code evaluation
+  -   [ ] Definitions
+    -   [ ] Function definitions
+    -   [x] Variable definitions
+  -   [ ] Expressions
+    - [ ] Literals
+      - [x] Numeric literals
+      - [x] Variables
+      - [x] Booleans
+      - [ ] S-expressions
+    - [ ] If-expressions
+    - [ ] Lambda expressions
