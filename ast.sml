@@ -167,7 +167,7 @@ fun eval_primitive op_str exp_list env =
               if y = 0 then
                 raise_runtime_error (DIV_BY_ZERO("Divide by zero error"))
               else ((NUM(round(real(x) / real(y)))), env)
-          | compute_primitive "print" [NIL] env = (print_line "[]"; (NIL, env))
+          | compute_primitive "print" [NIL] env = (print_line "()"; (NIL, env))
           | compute_primitive "print" [(BOOL(x))] env =
               (if x then print_line "true"
               else print_line "false";
