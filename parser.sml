@@ -333,6 +333,10 @@ fun parse_expression state =
             | accumulate_exps (STATE((#")"::cs), line, col)) exps =
                 (List.rev exps, (STATE(cs, line, col + 1)))
             | accumulate_exps (STATE((c::cs), line, col)) exps =
+                if c = #" " then accumulate_exps (STATE(cs, line, col + 1)) exps
+                else if c = #"\n" then accumulate_exps (STATE(cs, line + 1, 1))
+                  exps
+                 else
                 let
                   val skipped_ws = skip_whitespace (STATE((c::cs), line, col))
                   val (expr, expr_state) =
@@ -412,7 +416,9 @@ fun parse_func_definition state =
       fun accumulate_params (STATE([], line, col)) params =
         (List.rev params, (STATE([], line, col)))
         | accumulate_params (STATE((c::cs), line, col)) params =
-            if Char.isSpace c then accumulate_params (STATE(cs, line, col + 1)) params
+            if c = #" " then accumulate_params (STATE(cs, line, col + 1)) params
+            else if c = #"\n" then accumulate_params (STATE(cs, line + 1, 1))
+              params
             else if c = #")" then (List.rev params, (STATE(cs, line, col + 1)))
             else
           let
