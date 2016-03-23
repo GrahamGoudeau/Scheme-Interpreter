@@ -6,6 +6,7 @@ datatype value = NIL
                | NUM of int
                | CLOSURE of
                    ((identifier list) * exp) * ((identifier * value) list)
+               | S_EXP of s_exp
                (*
                | S_EXP_LIT of value
                | S_EXP_SYM of identifier
@@ -16,14 +17,21 @@ datatype value = NIL
                *)
 and
 
+s_exp = S_EXP_INT of int
+      | S_EXP_BOOL of bool
+      | S_EXP_SYM of identifier
+      | S_EXP_LIST of s_exp list
+
+and
+
 exp = LIT of value
              | VAR of identifier
+             | APPLY of exp * (exp list)
              (*
              | SET of identifier * exp
              | IFX of exp * exp * exp
              | WHILEX of exp * exp
              | BEGIN of exp list
-             | APPLY of exp * (exp list)
              | LETX of let_type * (identifier list) * (exp list) * exp
              | LAMBDA of lambda
              *)
