@@ -4,12 +4,12 @@ datatype let_type = LET | LET_STAR | LET_REC
 datatype value = NIL
                | BOOL of bool
                | NUM of int
+               | CLOSURE of ((identifier list) * exp) * ((identifier * exp))
                (*
                | S_EXP_LIT of value
                | S_EXP_SYM of identifier
                | S_EXP_LIST of value list
                | PAIR of value * value
-               | CLOSURE of ((identifier list) * exp) * ((identifier * exp)
                list)
                | PRIMITIVE of string
                *)
@@ -79,3 +79,26 @@ fun find_env key (ENV([])) =
   | find_env key (ENV((ident, value)::xs)) =
       if key = ident then value
       else find_env key (ENV(xs))
+
+
+fun eval (LIT(value)) env = (value, env)
+  | eval (VAR(ident)) env = ((find_env ident env), env)
+
+fun execute defs =
+      let
+        fun execute_def (VAL((ident, exp))) env =
+              let
+                val (result, new_env) = eval exp env
+              in
+                (bind_env ident result env)
+              end
+          | execute_def (EXP(exp)) env =
+              let
+                val (result, new_env) = eval exp env
+              in
+                new_env
+              end
+          (*| execute_def (DEFINE(ident, (ident_list, exp))) =*)
+      in
+        List.foldl (fn (def, old_env) => execute_def def old_env) init_env defs
+      end
