@@ -25,6 +25,6 @@ Standard ML was chosen as the language of implementation for several reasons.  T
       -   [x] Variables: `x`, `f`
       -   [x] Booleans: `#t`, `#f`
       -   [ ] S-expressions: `'(a b c)`, `'f`
-      -   [ ] If-expressions `(if {exp} {exp} {exp})`
-      -   [ ] Lambda expressions `(lambda ({ident}*) {exp})`
+    -   [ ] If-expressions `(if {exp} {exp} {exp})`
+    -   [ ] Lambda expressions `(lambda ({ident}*) {exp})`
 - [ ] Code evaluation
