@@ -6,6 +6,7 @@ datatype value = NIL
                | NUM of int
                | CLOSURE of
                    ((identifier list) * exp) * ((identifier * value) list)
+               | PRIMITIVE of string
                (*
                | S_EXP of s_exp
                | S_EXP_LIT of value
@@ -41,8 +42,10 @@ datatype def = VAL of identifier * exp
              | EXP of exp
              | DEFINE of identifier * lambda
 
-val primitive_funcs =
+val primitive_funcs_arity =
   [("=", 2), ("+", 2), ("-", 2), ("*", 2), ("/", 2), ("print", 1)]
+
+val primitive_funcs = List.map (fn (oper, _) => oper) primitive_funcs_arity
 
 fun member_string (elem:string) (xs:string list) =
   List.exists (fn x => x = elem) xs
@@ -52,6 +55,7 @@ fun value_to_string (NIL) = "[value: NIL]"
   | value_to_string (BOOL(false)) = "[value: #f]"
   | value_to_string (NUM(int)) = "[value: " ^ (Int.toString int) ^ "]"
   | value_to_string (CLOSURE(lambda, env)) = "[value: closure]"
+  | value_to_string (PRIMITIVE(ident)) = "[primitive op: " ^ ident ^ "]"
 
 fun exp_to_string (LIT(value)) = value_to_string value
   | exp_to_string (VAR(var)) = "[var " ^ var ^ "]"
@@ -139,8 +143,9 @@ fun find_env key [] =
 fun eval_primitive op_str exp_list env =
       let
         val list_len = List.length exp_list
-        val arity = (case (List.find (fn ((oper, ar)) => oper = op_str) primitive_funcs
-                       ) of
+        val arity = (case (List.find (fn ((oper, ar)) => oper = op_str)
+        primitive_funcs_arity)
+                        of
                          SOME((found_op, arity)) => arity
                        | NONE =>
                            raise_runtime_error
@@ -193,7 +198,7 @@ and
     eval (LIT(value)) env = (value, env)
   | eval (VAR(ident)) env = ((find_env ident env), env)
   | eval (APPLY((VAR(ident)), exp_list)) env = 
-      if member_string ident (List.map (fn (oper, _) => oper) primitive_funcs) then
+      if member_string ident primitive_funcs then
         eval_primitive ident exp_list env
       else
       let
@@ -210,15 +215,21 @@ and
         val bound_value = find_env ident env
         (*val (CLOSURE(((ident_list, body), captured_env))) = (case bound_value
         * of*)
-        val closure = (case bound_value of
-          (CLOSURE(((ident_list, body), captured_env))) => (CLOSURE(((ident_list, body), captured_env)))
-          | _ => 
+        fun user_apply closure exp_list env =
+              let
+                val ident_list = get_param_list_from_closure closure
+                val body = get_body_from_closure closure
+                val new_env = bind_args exp_list ident_list env
+              in eval body new_env end
+
+        val (value, _) = (case bound_value of
+          (CLOSURE(((ident_list, body), captured_env))) =>
+            (user_apply (CLOSURE(((ident_list, body), captured_env))) exp_list
+              env)
+          | (PRIMITIVE(oper)) => eval_primitive oper exp_list env
+          | _ =>
             raise_runtime_error
               (UNDEFINED_METHOD("Method \"" ^ ident ^ "\" not found")))
-        val ident_list = get_param_list_from_closure closure
-        val body = get_body_from_closure closure
-        val new_env = bind_args exp_list ident_list env
-        val (value, _) = (eval body new_env)
       in
         (value, env)
       end

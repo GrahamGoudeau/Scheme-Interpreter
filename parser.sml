@@ -148,7 +148,7 @@ fun char_list_is_int [] = false
     let
       val rest_is_int = List.all (fn d => Char.isDigit d) cs
     in ((Char.isDigit c) andalso rest_is_int) orelse
-       ((c = #"-") andalso rest_is_int)
+       ((c = #"-") andalso (rest_is_int andalso (not (cs = []))))
     end
 
 (* reflects Ramsey 137 of Build, Prove, Compare *)
@@ -300,12 +300,29 @@ fun try_parse_grammar_literal state =
   (not (quote_lit = NONE))
   end
 
+fun try_parse_primitive state =
+  if (try_parse_identifier state) then
+    let
+      val (ident, ident_state) = parse_identifier state true
+      val converted_ident = strip_option ident_state ident
+    in
+      member_string (String.implode converted_ident) primitive_funcs
+    end
+  else false
+
 (* returns (VAR(...), new state) *)
 fun parse_expression state =
   let val skip_ws_state = skip_whitespace state
       val (open_paren, open_state) = parse_open_paren skip_ws_state false
+    val _ = if try_parse_primitive skip_ws_state then print "primitive~~\n" else print "notprimitive ~~~~\n"
   in
-    if try_parse_identifier skip_ws_state andalso
+    if try_parse_primitive skip_ws_state then
+      let val (prim_option, prim_state) = parse_identifier skip_ws_state true
+        val prim = strip_option prim_state prim_option
+      in
+        ((LIT(PRIMITIVE(String.implode prim))), prim_state)
+      end
+    else if try_parse_identifier skip_ws_state andalso
         (not (try_parse_boolean skip_ws_state)) then
       let val (ident_option, ident_state) = parse_identifier skip_ws_state false
           val ident = strip_option ident_state ident_option
@@ -491,3 +508,6 @@ val x = test_suite do_test
 val a = parse_boolean (STATE(s "#t   \n", 1, 1))
 val b = parse_def (STATE(s "(define f (z) #t)", 1, 1))
 *)
+val x = parse_expression (STATE(s "-", 1, 1))
+val y = char_list_is_int (String.explode "-")
+val z = parse_expression (STATE(s "1", 1, 1))
