@@ -29,7 +29,7 @@ Standard ML was chosen as the language of implementation for several reasons.  T
     -   [ ] Lambda expressions `(lambda ({ident}*) {exp})`
 - [ ] Code evaluation
   -   [ ] Definitions
-    -   [ ] Function definitions
+    -   [x] Function definitions
     -   [x] Variable definitions
   -   [ ] Expressions
     - [ ] Literals
@@ -39,3 +39,8 @@ Standard ML was chosen as the language of implementation for several reasons.  T
       - [ ] S-expressions
     - [ ] If-expressions
     - [ ] Lambda expressions
+
+## Bugs
+
+- [ ] `(val x -)` should bind x to the minus operation; causes UnexpectedException
+- [ ] `(val x /)` gives `Var "/" not bound`
