@@ -45,3 +45,37 @@ fun print_def (VAL(ident, exp)) =
   | print_def (EXP(exp)) = print ((exp_to_string exp) ^ ")\n")
   | print_def (DEFINE(ident, _)) =
   print ("(define " ^ ident ^ ")\n")
+
+type error_message = string
+
+exception VariableNotBound
+
+datatype runtime_Error = VAR_NOT_BOUND of error_message
+
+fun raise_runtime_error error =
+  let
+    val runtime_err_msg = "Runtime error encountered:\n\t - \""
+    fun get_msg msg = runtime_err_msg ^ msg ^ "\"\n"
+    fun handle_error (VAR_NOT_BOUND(msg)) =
+      (print (get_msg msg); raise VariableNotBound)
+  in handle_error error
+  end
+
+datatype env = ENV of (identifier * value) list
+
+val init_env = (ENV([]))
+
+fun print_all_env (ENV(xs)) =
+  (print "=== Environment state: ===\n";
+   List.map
+     (fn (ident, value) => print ("{" ^ ident ^ ", " ^
+                                  (value_to_string value) ^ "}\n"))
+     xs;
+   print "\n")
+
+fun bind_env key value (ENV(xs)) = (ENV((key, value)::xs))
+fun find_env key (ENV([])) =
+      raise_runtime_error (VAR_NOT_BOUND("Var \"" ^ key ^ "\" not bound"))
+  | find_env key (ENV((ident, value)::xs)) =
+      if key = ident then value
+      else find_env key (ENV(xs))
