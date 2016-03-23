@@ -85,7 +85,7 @@ fun skip_comment (STATE([], l, c)) = STATE([], l, c)
   | skip_comment (STATE((#";"::cs), l, c)) =
     let
       fun skip_until_newline (STATE([], l, c)) = STATE([], l, c)
-        | skip_until_newline (STATE((#"\n" :: cs), l, c)) = STATE(cs, l, c)
+        | skip_until_newline (STATE((#"\n" :: cs), l, c)) = STATE(cs, l + 1, 1)
         | skip_until_newline (STATE((c :: cs), l, col)) =
             skip_until_newline (STATE(cs, l, (col + 1)))
     in
@@ -131,7 +131,7 @@ fun parse_str_literal original_state literal fail =
     else
       if fail then
         raise_error original_state (LIT_NOT_FOUND("Literal \"" ^
-                                  (String.implode lit) ^
+                                  literal ^
                                   "\" expected but not found"))
       else (NONE, original_state)
   end
