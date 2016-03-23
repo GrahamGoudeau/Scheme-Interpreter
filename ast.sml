@@ -4,7 +4,8 @@ datatype let_type = LET | LET_STAR | LET_REC
 datatype value = NIL
                | BOOL of bool
                | NUM of int
-               | CLOSURE of ((identifier list) * exp) * ((identifier * exp))
+               | CLOSURE of
+                   ((identifier list) * exp) * ((identifier * value) list)
                (*
                | S_EXP_LIT of value
                | S_EXP_SYM of identifier
@@ -36,6 +37,7 @@ fun value_to_string (NIL) = "[value: NIL]"
   | value_to_string (BOOL(true)) = "[value: #t]"
   | value_to_string (BOOL(false)) = "[value: #f]"
   | value_to_string (NUM(int)) = "[value: " ^ (Int.toString int) ^ "]"
+  | value_to_string (CLOSURE(lambda, env)) = "[value: closure]"
 
 fun exp_to_string (LIT(value)) = value_to_string value
   | exp_to_string (VAR(var)) = "[var " ^ var ^ "]"
