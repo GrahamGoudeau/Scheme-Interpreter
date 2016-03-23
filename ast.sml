@@ -62,11 +62,13 @@ exception VariableNotBound
 exception UndefinedMethod
 exception InvalidMethodName
 exception MismatchFunctionArity
+exception UnexpectedRuntimeError
 
 datatype runtime_Error = VAR_NOT_BOUND of error_message
                        | INVALID_METHOD of error_message
                        | UNDEFINED_METHOD of error_message
                        | MISMATCH_ARITY of error_message
+                       | UNEXPECTED of error_message
 
 fun raise_runtime_error error =
   let
@@ -80,8 +82,19 @@ fun raise_runtime_error error =
           (print (get_msg msg); raise UndefinedMethod)
       | handle_error (MISMATCH_ARITY(msg)) =
           (print (get_msg msg); raise MismatchFunctionArity)
+      | handle_error (UNEXPECTED(msg)) =
+          (print (get_msg msg); raise UnexpectedRuntimeError)
   in handle_error error
   end
+
+fun get_param_list_from_closure (CLOSURE(((ident_list, _), _))) = ident_list
+  | get_param_list_from_closure _ =
+      raise_runtime_error
+        (UNEXPECTED("Unexpected error while getting parameter list"))
+fun get_body_from_closure (CLOSURE(((_, body), _))) = body
+  | get_body_from_closure _ =
+      raise_runtime_error
+        (UNEXPECTED("Unexpected error while getting closure body"))
 
 (*datatype env = ENV of (identifier * value) list*)
 type env = (identifier * value) list
@@ -109,22 +122,32 @@ fun eval (LIT(value)) env = (value, env)
   | eval (VAR(ident)) env = ((find_env ident env), env)
   | eval (APPLY((VAR(ident)), exp_list)) env = 
       let
-        val _ = print "Applying\n"
         fun bind_args [] [] env = env
           | bind_args (arg::args) (param::params) env =
-              bind_env param (eval arg env) env
+              let val (value, value_state) = eval arg env
+              in
+                bind_args args params (bind_env param value value_state)
+              end
           | bind_args _ _ _ =
               raise_runtime_error
-        val arguments = List.map (fn exp => eval exp) exp_list
+                (MISMATCH_ARITY("Mismatch in arity for method \"" ^
+                                ident ^ "\""))
         val bound_value = find_env ident env
-        val closure = case bound_value of
-          (CLOSURE(((ident_list, body), captured_env))) => bound_value
+        (*val (CLOSURE(((ident_list, body), captured_env))) = (case bound_value
+        * of*)
+        val closure = (case bound_value of
+          (CLOSURE(((ident_list, body), captured_env))) => (CLOSURE(((ident_list, body), captured_env)))
           | _ => 
             raise_runtime_error
-              (UNDEFINED_METHOD("Method \"" ^ ident ^ "\" not found"))
-      (*in ((find_env ident env), env)*)
+              (UNDEFINED_METHOD("Method \"" ^ ident ^ "\" not found")))
+        val ident_list = get_param_list_from_closure closure
+        val body = get_body_from_closure closure
+        val new_env = bind_args exp_list ident_list env
+        val (value, _) = (eval body new_env)
       in
+        (value, env)
       end
+      (*
   | eval (APPLY(exp, _)) env =
       let
         val (value, value_state) = eval exp env
@@ -134,6 +157,7 @@ fun eval (LIT(value)) env = (value, env)
                           (value_to_string value) ^
                           "\" is invalid")))
       end
+      *)
   (*
       let val (value, value_state) = eval exp
       in
