@@ -102,7 +102,12 @@ fun execute defs =
               in
                 new_env
               end
-          (*| execute_def (DEFINE(ident, (ident_list, exp))) =*)
+          | execute_def (DEFINE((ident, lambda))) env =
+              (bind_env
+                ident
+                (CLOSURE((lambda: (identifier list * exp),
+                         env)))
+                env)
       in
         List.foldl (fn (def, old_env) => execute_def def old_env) init_env defs
       end
