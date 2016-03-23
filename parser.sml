@@ -237,14 +237,6 @@ fun parse_boolean state fail =
         parse_str_literal state "#t" false
       val (false_lit, false_state) =
         parse_str_literal state "#f" false
-        (*
-      val (bool_lit, bool_state) =
-        if (not (true_lit = NONE)) then (true, true_state)
-        else if (not (false_lit = NONE)) then (false, false_state)
-        else
-            raise_syntax_error state (EXPECTED_BOOL("Expected boolean"))
-            *)
-    (*in ((BOOL(bool_lit)), bool_state)*)
     in
       if (not (true_lit = NONE)) then ((SOME(BOOL(true))), true_state)
       else if (not (false_lit = NONE)) then ((SOME(BOOL(false))), false_state)
