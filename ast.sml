@@ -63,11 +63,13 @@ fun raise_runtime_error error =
   in handle_error error
   end
 
-datatype env = ENV of (identifier * value) list
+(*datatype env = ENV of (identifier * value) list*)
+type env = (identifier * value) list
 
-val init_env = (ENV([]))
+(*val init_env = (ENV([]))*)
+val init_env = [] : env
 
-fun print_all_env (ENV(xs)) =
+fun print_all_env (xs: env) =
   (print "=== Environment state: ===\n";
    List.map
      (fn (ident, value) => print ("{" ^ ident ^ ", " ^
@@ -75,12 +77,12 @@ fun print_all_env (ENV(xs)) =
      xs;
    print "\n")
 
-fun bind_env key value (ENV(xs)) = (ENV((key, value)::xs))
-fun find_env key (ENV([])) =
+fun bind_env key value (xs: env) = (key, value)::xs
+fun find_env key [] =
       raise_runtime_error (VAR_NOT_BOUND("Var \"" ^ key ^ "\" not bound"))
-  | find_env key (ENV((ident, value)::xs)) =
+  | find_env key ((ident, value)::xs) =
       if key = ident then value
-      else find_env key (ENV(xs))
+      else find_env key xs
 
 
 fun eval (LIT(value)) env = (value, env)
