@@ -27,8 +27,7 @@ exception ExpectedBool
 exception ExpectedLiteral
 exception UnexpectedException
 
-type error_message = string
-datatype error = TAB of error_message
+datatype syntax_error = TAB of error_message
                | LIT_NOT_FOUND of error_message
                | EXPECTED_IDENT of error_message
                | TEST_FAILED of error_message
@@ -45,7 +44,7 @@ fun strip_option_list [] = []
   | strip_option_list ((SOME(c)::cs)) = (c::(strip_option_list cs))
   | strip_option_list (NONE::cs) = raise Match
 
-fun raise_error (STATE(_, l, c)) error =
+fun raise_syntax_error (STATE(_, l, c)) error =
   let
     val parse_err_msg = "Error during parsing at line: " ^
                         (Int.toString l) ^ ", column: " ^
@@ -78,7 +77,7 @@ fun raise_error (STATE(_, l, c)) error =
 
 
 fun strip_option _ (SOME(c)) = c
-  | strip_option state NONE = raise_error state UNEXPECTED
+  | strip_option state NONE = raise_syntax_error state UNEXPECTED
 
   (* should rewrite as general strip comment function *)
 fun skip_comment (STATE([], l, c)) = STATE([], l, c)
@@ -103,7 +102,7 @@ fun skip_whitespace (STATE([], l, c)) = STATE([], l, c)
         val tab_line_str = Int.toString l
         val tab_line_col = Int.toString c
       in
-        raise_error (STATE(cs, l, c)) (TAB("Tab char found at line: " ^
+        raise_syntax_error (STATE(cs, l, c)) (TAB("Tab char found at line: " ^
                          tab_line_str ^
                          ", column: " ^
                          tab_line_col))
@@ -130,7 +129,7 @@ fun parse_str_literal original_state literal fail =
     if result then (SOME(lit), new_state)
     else
       if fail then
-        raise_error original_state (LIT_NOT_FOUND("Literal \"" ^
+        raise_syntax_error original_state (LIT_NOT_FOUND("Literal \"" ^
                                   literal ^
                                   "\" expected but not found"))
       else (NONE, original_state)
@@ -157,7 +156,7 @@ fun char_list_is_int [] = false
 (* reflects Ramsey 137 of Build, Prove, Compare *)
 (* returns (option(ident), state) *)
 fun parse_identifier (STATE([], line, col)) fail =
-  if fail then raise_error (STATE([], line, col))
+  if fail then raise_syntax_error (STATE([], line, col))
                            (EXPECTED_IDENT("Expected identifier"))
   else (NONE, (STATE([], line, col)))
   | parse_identifier state fail =
@@ -174,7 +173,7 @@ fun parse_identifier (STATE([], line, col)) fail =
   in
     if ident = [] orelse (char_list_is_int ident) then
       if fail then
-        raise_error ident_state (EXPECTED_IDENT("Expected identifier"))
+        raise_syntax_error ident_state (EXPECTED_IDENT("Expected identifier"))
       else
         (NONE, ident_state)
     else
@@ -189,7 +188,7 @@ fun try_parse_identifier state =
 
 fun parse_integer (STATE([], line, col)) fail =
   if fail then
-    raise_error (STATE([], line, col)) (EXPECTED_INT("Expected int"))
+    raise_syntax_error (STATE([], line, col)) (EXPECTED_INT("Expected int"))
   else (NONE, (STATE([], line, col)))
   | parse_integer (STATE((c::cs), line, col)) fail =
 let
@@ -204,7 +203,7 @@ let
 in
   if (not (char_list_is_int full_int)) then
     if fail then
-      raise_error (STATE((c::cs), line, col)) (EXPECTED_INT("Expected int"))
+      raise_syntax_error (STATE((c::cs), line, col)) (EXPECTED_INT("Expected int"))
     else (NONE, (STATE((c::cs), line, col)))
   else
     let
@@ -243,13 +242,13 @@ fun parse_boolean state fail =
         if (not (true_lit = NONE)) then (true, true_state)
         else if (not (false_lit = NONE)) then (false, false_state)
         else
-            raise_error state (EXPECTED_BOOL("Expected boolean"))
+            raise_syntax_error state (EXPECTED_BOOL("Expected boolean"))
             *)
     (*in ((BOOL(bool_lit)), bool_state)*)
     in
       if (not (true_lit = NONE)) then ((SOME(BOOL(true))), true_state)
       else if (not (false_lit = NONE)) then ((SOME(BOOL(false))), false_state)
-      else if fail then raise_error state (EXPECTED_BOOL("Expected boolean"))
+      else if fail then raise_syntax_error state (EXPECTED_BOOL("Expected boolean"))
       else (NONE, state)
     end
 
@@ -284,7 +283,7 @@ let
       parse_s_exp state
       *)
     else(* if fail then*)
-      raise_error state (EXPECTED_LIT("Expected literal (int, bool, or S-exp)"))
+      raise_syntax_error state (EXPECTED_LIT("Expected literal (int, bool, or S-exp)"))
          (*else (NONE, state)*)
 in
   0
@@ -315,7 +314,7 @@ fun parse_expression state =
         ((LIT(boolean), bool_state))
       end
     else
-      raise_error
+      raise_syntax_error
         skip_ws_state
         (EXPECTED_EXPR("Expected expression"))
   end
@@ -439,10 +438,10 @@ fun test_suite do_run =
         false
     in
       (if not (test_ident1 = (SOME([#"d", #"e"]))) then
-        raise_error default_state (TEST_FAILED("Identifier test 1 fail"))
+        raise_syntax_error default_state (TEST_FAILED("Identifier test 1 fail"))
        else 1;
        if not (test_ident2 = NONE) then
-         raise_error default_state (TEST_FAILED("Ident test 2 fail"))
+         raise_syntax_error default_state (TEST_FAILED("Ident test 2 fail"))
        else 1)
     end
  else 1
