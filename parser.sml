@@ -142,8 +142,6 @@ fun parse_close_paren state fail =
   parse_str_literal state ")" fail
 
 fun member_char (elem : char) (xs : char list) = List.exists (fn x => x = elem) xs
-fun member_string (elem:string) (xs:string list) =
-  List.exists (fn x => x = elem) xs
 
 fun char_list_is_int [] = false
   | char_list_is_int (c::cs) =

@@ -41,6 +41,12 @@ datatype def = VAL of identifier * exp
              | EXP of exp
              | DEFINE of identifier * lambda
 
+val primitive_funcs =
+  [("=", 2), ("+", 2), ("-", 2), ("*", 2), ("/", 2), ("print", 1)]
+
+fun member_string (elem:string) (xs:string list) =
+  List.exists (fn x => x = elem) xs
+
 fun value_to_string (NIL) = "[value: NIL]"
   | value_to_string (BOOL(true)) = "[value: #t]"
   | value_to_string (BOOL(false)) = "[value: #f]"
@@ -66,12 +72,16 @@ exception VariableNotBound
 exception UndefinedMethod
 exception InvalidMethodName
 exception MismatchFunctionArity
+exception TypeError
+exception DivideByZero
 exception UnexpectedRuntimeError
 
 datatype runtime_Error = VAR_NOT_BOUND of error_message
                        | INVALID_METHOD of error_message
                        | UNDEFINED_METHOD of error_message
                        | MISMATCH_ARITY of error_message
+                       | TYPE_ERROR of error_message
+                       | DIV_BY_ZERO of error_message
                        | UNEXPECTED of error_message
 
 fun raise_runtime_error error =
@@ -86,6 +96,10 @@ fun raise_runtime_error error =
           (print (get_msg msg); raise UndefinedMethod)
       | handle_error (MISMATCH_ARITY(msg)) =
           (print (get_msg msg); raise MismatchFunctionArity)
+      | handle_error (TYPE_ERROR(msg)) =
+          (print (get_msg msg); raise TypeError)
+      | handle_error (DIV_BY_ZERO(msg)) =
+          (print (get_msg msg); raise DivideByZero)
       | handle_error (UNEXPECTED(msg)) =
           (print (get_msg msg); raise UnexpectedRuntimeError)
   in handle_error error
@@ -122,9 +136,66 @@ fun find_env key [] =
       if key = ident then value
       else find_env key xs
 
-fun eval (LIT(value)) env = (value, env)
+fun eval_primitive op_str exp_list env =
+      let
+        val list_len = List.length exp_list
+        val arity = (case (List.find (fn ((oper, ar)) => oper = op_str) primitive_funcs
+                       ) of
+                         SOME((found_op, arity)) => arity
+                       | NONE =>
+                           raise_runtime_error
+                            (UNDEFINED_METHOD("Unrecognized primitive \"" ^
+                                            op_str ^ "\"")))
+        val arity_error = fn (oper) =>
+          raise_runtime_error
+            (MISMATCH_ARITY("Mismatch primitive arity with: \"" ^
+                            oper ^ "\""))
+        val type_error = fn oper =>
+          raise_runtime_error
+            (TYPE_ERROR("Invalid types to primitive function: \"" ^
+                        oper ^ "\""))
+
+        fun print_line str = print (str ^ "\n")
+        fun compute_primitive "=" [x, y] env = ((BOOL(x = y)), env)
+          | compute_primitive "+" [(NUM(x)), (NUM(y))] env = ((NUM(x + y)), env)
+          | compute_primitive "+" [x, y] env = type_error "+"
+          | compute_primitive "-" [(NUM(x)), (NUM(y))] env = ((NUM(x - y)), env)
+          | compute_primitive "-" [x, y] env = type_error "-"
+          | compute_primitive "*" [(NUM(x)), (NUM(y))] env = ((NUM(x * y)), env)
+          | compute_primitive "*" [x, y] env = type_error "*"
+          | compute_primitive "/" [(NUM(x)), (NUM(y))] env =
+              if y = 0 then
+                raise_runtime_error (DIV_BY_ZERO("Divide by zero error"))
+              else ((NUM(round(real(x) / real(y)))), env)
+          | compute_primitive "print" [NIL] env = (print_line "[]"; (NIL, env))
+          | compute_primitive "print" [(BOOL(x))] env =
+              (if x then print_line "true"
+              else print_line "false";
+              ((BOOL(x)), env))
+          | compute_primitive "print" [(NUM(x))] env =
+              (print_line (Int.toString x); ((NUM(x)), env))
+          | compute_primitive "print" [(CLOSURE(s))] env =
+              (print_line "{closure}";
+                ((CLOSURE(s)), env))
+          | compute_primitive "print" _ env = arity_error "print"
+          | compute_primitive oper _ env = arity_error oper
+        fun eval_args [] env arg_values = (arg_values, env)
+          | eval_args (arg::args) env arg_values =
+              let val (value, value_state) = eval arg env
+              in
+                eval_args args value_state (arg_values @ [value])
+              end
+        val (arg_list, arg_env) = eval_args exp_list env []
+      in
+        compute_primitive op_str arg_list arg_env
+      end
+and
+    eval (LIT(value)) env = (value, env)
   | eval (VAR(ident)) env = ((find_env ident env), env)
   | eval (APPLY((VAR(ident)), exp_list)) env = 
+      if member_string ident (List.map (fn (oper, _) => oper) primitive_funcs) then
+        eval_primitive ident exp_list env
+      else
       let
         fun bind_args [] [] env = env
           | bind_args (arg::args) (param::params) env =
