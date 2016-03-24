@@ -314,8 +314,8 @@ fun try_parse_primitive state =
 fun parse_expression state =
   let val skip_ws_state = skip_whitespace state
       val (open_paren, open_state) = parse_open_paren skip_ws_state false
-    val _ = if try_parse_primitive skip_ws_state then print "primitive~~\n" else print "notprimitive ~~~~\n"
   in
+    (* TODO: check if this primitive case is ever reached *)
     if try_parse_primitive skip_ws_state then
       let val (prim_option, prim_state) = parse_identifier skip_ws_state true
         val prim = strip_option prim_state prim_option
@@ -340,7 +340,15 @@ fun parse_expression state =
         ((LIT(boolean), bool_state))
       end
     else if (not (open_paren = NONE)) then
-      let fun accumulate_exps (STATE([], line, col)) exps =
+      let           val skipped_ws = skip_whitespace open_state
+          val (main_ident_option, ident_state) = parse_identifier skipped_ws true
+          val main_ident = String.implode (strip_option ident_state
+            main_ident_option)
+          val skipped_ws2 = skip_whitespace ident_state
+      in
+        if (not (main_ident = "lambda")) then
+          let
+            fun accumulate_exps (STATE([], line, col)) exps =
                 (*(List.rev exps, (STATE([], line, col)))*)
                 raise_syntax_error
                   (STATE([], line, col))
@@ -358,15 +366,43 @@ fun parse_expression state =
                     parse_expression skipped_ws
                 in accumulate_exps expr_state (expr::exps)
                 end
-          val skipped_ws = skip_whitespace open_state
-          val (main_ident_option, ident_state) = parse_identifier skipped_ws true
-          val main_ident = String.implode (strip_option ident_state
-            main_ident_option)
-          val skipped_ws2 = skip_whitespace ident_state
-          val (exps, exps_state) = accumulate_exps skipped_ws2 []
-      in ((APPLY((VAR(main_ident)), exps)), exps_state)
+            val (exps, exps_state) = accumulate_exps skipped_ws2 []
+          in ((APPLY((VAR(main_ident)), exps)), exps_state)
+          end
+        else
+          let 
+             val (skip_param_paren, param_paren_state) =
+               parse_str_literal skipped_ws2 "(" true
+             val skipped_ws_3 = skip_whitespace param_paren_state
+             fun accumulate_params (STATE([], line, col)) params =
+                    raise_syntax_error
+                      (STATE([], line, col))
+                      (EXPECTED_IDENT("Expected identifier in param list"))
+                | accumulate_params (STATE((#")"::cs), line, col)) params =
+                    (List.rev params, (STATE(cs, line, col + 1)))
+                | accumulate_params (STATE((c::cs), line, col)) params =
+                    if c = #" " then accumulate_params
+                                       (STATE(cs, line, col + 1)) params
+                    else if c = #"\n" then accumulate_params
+                                       (STATE(cs, line + 1, 1)) params
+                    else
+                      let
+                        val skipped_ws =
+                          skip_whitespace (STATE((c::cs), line, col))
+                        val (ident_option, ident_state) =
+                          parse_identifier skipped_ws true
+                        val ident = String.implode (strip_option ident_state ident_option)
+                      in accumulate_params ident_state ((VAR(ident))::params)
+                end
+            val (params, param_state) = accumulate_params skipped_ws_3 []
+            val skipped_ws_4 = skip_whitespace param_state
+            val (body, body_state) = parse_expression skipped_ws_4
+            val skipped_ws_5 = skip_whitespace body_state
+            val (final_paren, final_state) =
+              parse_str_literal skipped_ws_5 ")" true
+          in ((APPLY((VAR(main_ident)), params @ [body])), final_state)
+          end
       end
-
     else
       raise_syntax_error
         skip_ws_state

@@ -28,13 +28,13 @@ and
 exp = LIT of value
              | VAR of identifier
              | APPLY of exp * (exp list)
+             | LAMBDA of lambda
              (*
              | SET of identifier * exp
              | IFX of exp * exp * exp
              | WHILEX of exp * exp
              | BEGIN of exp list
              | LETX of let_type * (identifier list) * (exp list) * exp
-             | LAMBDA of lambda
              *)
              withtype lambda = (identifier list) * exp
 
@@ -43,7 +43,8 @@ datatype def = VAL of identifier * exp
              | DEFINE of identifier * lambda
 
 val primitive_funcs_arity =
-  [("=", 2), ("+", 2), ("-", 2), ("*", 2), ("/", 2), ("print", 1)]
+  [("=", 2), ("+", 2), ("-", 2), ("*", 2), ("/", 2), ("print", 1),
+   ("if", 3), ("lambda", 2)]
 
 val primitive_funcs = List.map (fn (oper, _) => oper) primitive_funcs_arity
 
@@ -118,11 +119,19 @@ fun get_body_from_closure (CLOSURE(((_, body), _))) = body
       raise_runtime_error
         (UNEXPECTED("Unexpected error while getting closure body"))
 
+fun get_env_from_closure (CLOSURE((_, env))) = env
+  | get_env_from_closure _ =
+      raise_runtime_error
+        (UNEXPECTED("Unexpected error while getting closure environment"))
+
+
 (*datatype env = ENV of (identifier * value) list*)
 type env = (identifier * value) list
 
 (*val init_env = (ENV([]))*)
 val init_env = [] : env
+
+fun combine_envs env1 env2 = env1 @ env2
 
 fun print_all_env (xs: env) =
   (print "=== Environment state: ===\n";
@@ -190,13 +199,28 @@ fun eval_primitive op_str exp_list env =
               in
                 eval_args args value_state (arg_values @ [value])
               end
-        val (arg_list, arg_env) = eval_args exp_list env []
+        (*val (arg_list, arg_env) = eval_args exp_list env []*)
       in
-        compute_primitive op_str arg_list arg_env
+        if op_str = "lambda" then
+          let fun get_params_and_body [x] param_list = ((List.rev param_list), x)
+                | get_params_and_body ((VAR(x))::xs) param_list =
+                    get_params_and_body xs (x::param_list)
+                | get_params_and_body (_::xs) param_list = raise Match
+                | get_params_and_body [] _ = raise Match
+            val (params, body) = get_params_and_body exp_list []
+          in
+            ((CLOSURE((params, body), env)), env)
+          end
+        else
+          let
+            val(arg_list, arg_env) = eval_args exp_list env []
+          in compute_primitive op_str arg_list arg_env
+          end
       end
 and
     eval (LIT(value)) env = (value, env)
   | eval (VAR(ident)) env = ((find_env ident env), env)
+  | eval (LAMBDA(lambda)) env = ((CLOSURE(lambda, env)), env)
   | eval (APPLY((VAR(ident)), exp_list)) env = 
       if member_string ident primitive_funcs then
         eval_primitive ident exp_list env
@@ -220,7 +244,9 @@ and
                 val ident_list = get_param_list_from_closure closure
                 val body = get_body_from_closure closure
                 val new_env = bind_args exp_list ident_list env
-              in eval body new_env end
+                val combined =
+                  combine_envs new_env (get_env_from_closure closure)
+              in eval body combined end
 
         val (value, _) = (case bound_value of
           (CLOSURE(((ident_list, body), captured_env))) =>
