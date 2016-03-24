@@ -91,7 +91,7 @@ datatype runtime_Error = VAR_NOT_BOUND of error_message
 
 fun raise_runtime_error error =
   let
-    val runtime_err_msg = "Runtime error encountered:\n\t - \""
+    val runtime_err_msg = "Runtime error:\n\t - \""
     fun get_msg msg = runtime_err_msg ^ msg ^ "\"\n"
     fun handle_error (VAR_NOT_BOUND(msg)) =
           (print (get_msg msg); raise VariableNotBound)
