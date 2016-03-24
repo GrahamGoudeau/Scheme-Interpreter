@@ -192,6 +192,8 @@ fun eval_primitive op_str exp_list env =
               (print_line "{closure}";
                 ((CLOSURE(s)), env))
           | compute_primitive "print" _ env = arity_error "print"
+          | compute_primitive "if" [BOOL(false), _, false_arg] env = (false_arg, env)
+          | compute_primitive "if" [_, true_arg, _] env = (true_arg, env)
           | compute_primitive oper _ env = arity_error oper
         fun eval_args [] env arg_values = (arg_values, env)
           | eval_args (arg::args) env arg_values =
