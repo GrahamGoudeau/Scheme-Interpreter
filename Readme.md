@@ -25,8 +25,8 @@ Standard ML was chosen as the language of implementation for several reasons.  T
       -   [x] Variables: `x`, `f`
       -   [x] Booleans: `#t`, `#f`
       -   [ ] S-expressions: `'(a b c)`, `'f`
-    -   [ ] If-expressions `(if {exp} {exp} {exp})`
-    -   [ ] Lambda expressions `(lambda ({ident}*) {exp})`
+    -   [x] If-expressions `(if {exp} {exp} {exp})`
+    -   [x] Lambda expressions `(lambda ({ident}*) {exp})`
 - [ ] Code evaluation
   -   [ ] Definitions
     -   [x] Function definitions
@@ -37,10 +37,12 @@ Standard ML was chosen as the language of implementation for several reasons.  T
       - [x] Variables
       - [x] Booleans
       - [ ] S-expressions
-    - [ ] If-expressions
-    - [ ] Lambda expressions
+    - [x] If-expressions
+    - [x] Lambda expressions
 
 ## Bugs
 
-- [ ] `(val x -)` should bind x to the minus operation; causes UnexpectedException
-- [ ] `(val x /)` gives `Var "/" not bound`
+- [x] `(val x -)` should bind x to the minus operation; causes UnexpectedException
+- [x] `(val x /)` gives `Var "/" not bound`
+- [ ] Implementing 'currying' gives a type error with primitive +
+- [ ] `Expected identifier` with `(val x ((curry +) 5))`
