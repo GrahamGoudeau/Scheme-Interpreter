@@ -247,7 +247,7 @@ and
                 val body = get_body_from_closure closure
                 val new_env = bind_args exp_list ident_list env
                 val combined =
-                  combine_envs new_env (get_env_from_closure closure)
+                  combine_envs (get_env_from_closure closure) new_env
               in eval body combined end
 
         val (value, _) = (case bound_value of
