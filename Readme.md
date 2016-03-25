@@ -44,5 +44,6 @@ Standard ML was chosen as the language of implementation for several reasons.  T
 
 - [x] `(val x -)` should bind x to the minus operation; causes UnexpectedException
 - [x] `(val x /)` gives `Var "/" not bound`
-- [ ] Implementing 'currying' gives a type error with primitive +
+- [x] Implementing 'currying' gives a type error with primitive +
 - [ ] `Expected identifier` with `(val x ((curry +) 5))`
+- [ ] All branches of if expressions always evaluate
