@@ -340,16 +340,14 @@ fun parse_expression state =
         ((LIT(boolean), bool_state))
       end
     else if (not (open_paren = NONE)) then
-      let           val skipped_ws = skip_whitespace open_state
-          val (main_ident_option, ident_state) = parse_identifier skipped_ws true
-          val main_ident = String.implode (strip_option ident_state
-            main_ident_option)
-          val skipped_ws2 = skip_whitespace ident_state
+      let
+          val skipped_ws = skip_whitespace open_state
+          val (main_expr, main_expr_state) = parse_expression skipped_ws
+          val skipped_ws2 = skip_whitespace main_expr_state
       in
-        if (not (main_ident = "lambda")) then
+        if (not (main_expr = (LIT(PRIMITIVE("lambda"))))) then
           let
             fun accumulate_exps (STATE([], line, col)) exps =
-                (*(List.rev exps, (STATE([], line, col)))*)
                 raise_syntax_error
                   (STATE([], line, col))
                   (EXPECTED_EXPR("Expected expression"))
@@ -367,7 +365,7 @@ fun parse_expression state =
                 in accumulate_exps expr_state (expr::exps)
                 end
             val (exps, exps_state) = accumulate_exps skipped_ws2 []
-          in ((APPLY((VAR(main_ident)), exps)), exps_state)
+          in (APPLY(main_expr, exps), exps_state)
           end
         else
           let 
@@ -392,7 +390,7 @@ fun parse_expression state =
                         val (ident_option, ident_state) =
                           parse_identifier skipped_ws true
                         val ident = String.implode (strip_option ident_state ident_option)
-                      in accumulate_params ident_state ((VAR(ident))::params)
+                      in accumulate_params ident_state (ident::params)
                 end
             val (params, param_state) = accumulate_params skipped_ws_3 []
             val skipped_ws_4 = skip_whitespace param_state
@@ -400,7 +398,7 @@ fun parse_expression state =
             val skipped_ws_5 = skip_whitespace body_state
             val (final_paren, final_state) =
               parse_str_literal skipped_ws_5 ")" true
-          in ((APPLY((VAR(main_ident)), params @ [body])), final_state)
+          in ((LAMBDA((params, body): lambda)), final_state)
           end
       end
     else
