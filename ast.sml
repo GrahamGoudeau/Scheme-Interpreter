@@ -6,7 +6,8 @@ datatype value = NIL
                | NUM of int
                | CLOSURE of
                    ((identifier list) * exp) * ((identifier * value) list)
-               | PRIMITIVE of string
+               | PRIMITIVE of identifier
+               | UNDEFINED
                (*
                | S_EXP of s_exp
                | S_EXP_LIT of value
@@ -44,9 +45,13 @@ datatype def = VAL of identifier * exp
 
 val primitive_funcs_arity =
   [("=", 2), ("+", 2), ("-", 2), ("*", 2), ("/", 2), ("print", 1),
-   ("if", 3), ("lambda", 2)]
+   ("if", 3), ("lambda", 2), (">", 2), ("<", 2)]
 
-val primitive_funcs = List.map (fn (oper, _) => oper) primitive_funcs_arity
+val reserved_idents = ["if", "lambda"]
+val primitive_funcs =
+  ["=", "+", "-", "*", "/", "<", ">", "print", "check-expect"]
+(*val primitive_funcs = List.map (fn (oper, _) => oper) primitive_funcs_arity*)
+val primitive_funcs = reserved_idents @ primitive_funcs
 
 fun member_string (elem:string) (xs:string list) =
   List.exists (fn x => x = elem) xs
@@ -57,6 +62,7 @@ fun value_to_string (NIL) = "[value: NIL]"
   | value_to_string (NUM(int)) = "[value: " ^ (Int.toString int) ^ "]"
   | value_to_string (CLOSURE(lambda, env)) = "[value: closure]"
   | value_to_string (PRIMITIVE(ident)) = "[primitive op: " ^ ident ^ "]"
+  | value_to_string UNDEFINED = "[value: <undefined>]"
 
 fun exp_to_string (LIT(value)) = value_to_string value
   | exp_to_string (VAR(var)) = "[var " ^ var ^ "]"
@@ -64,6 +70,8 @@ fun exp_to_string (LIT(value)) = value_to_string value
       "[apply " ^ exp_to_string ident ^ " args: " ^
         String.concat (List.map (fn arg => ((exp_to_string arg) ^ " "))
         arg_list) ^ "]"
+  | exp_to_string (LAMBDA(ident_list, exp)) =
+      "[lambda (" ^ (String.concat ident_list) ^ ")]"
 
 fun print_def (VAL(ident, exp)) =
   (print ("(val " ^ ident ^ " " ^ exp_to_string exp ^ ")\n"))
@@ -80,6 +88,7 @@ exception MismatchFunctionArity
 exception TypeError
 exception DivideByZero
 exception UnexpectedRuntimeError
+exception ReservedKeyword
 
 datatype runtime_Error = VAR_NOT_BOUND of error_message
                        | INVALID_METHOD of error_message
@@ -88,6 +97,7 @@ datatype runtime_Error = VAR_NOT_BOUND of error_message
                        | TYPE_ERROR of error_message
                        | DIV_BY_ZERO of error_message
                        | UNEXPECTED of error_message
+                       | RESERVED_KEYWORD of error_message
 
 fun raise_runtime_error error =
   let
@@ -105,6 +115,8 @@ fun raise_runtime_error error =
           (print (get_msg msg); raise TypeError)
       | handle_error (DIV_BY_ZERO(msg)) =
           (print (get_msg msg); raise DivideByZero)
+      | handle_error (RESERVED_KEYWORD(msg)) =
+          (print (get_msg msg); raise ReservedKeyword)
       | handle_error (UNEXPECTED(msg)) =
           (print (get_msg msg); raise UnexpectedRuntimeError)
   in handle_error error
@@ -149,142 +161,211 @@ fun find_env key [] =
       if key = ident then value
       else find_env key xs
 
-fun eval_primitive op_str exp_list env =
-      let
-        val list_len = List.length exp_list
-        val arity = (case (List.find (fn ((oper, ar)) => oper = op_str)
-        primitive_funcs_arity)
-                        of
-                         SOME((found_op, arity)) => arity
-                       | NONE =>
-                           raise_runtime_error
-                            (UNDEFINED_METHOD("Unrecognized primitive \"" ^
-                                            op_str ^ "\"")))
-        val arity_error = fn (oper) =>
-          raise_runtime_error
-            (MISMATCH_ARITY("Mismatch primitive arity with: \"" ^
-                            oper ^ "\""))
-        val type_error = fn oper =>
-          raise_runtime_error
-            (TYPE_ERROR("Invalid types to primitive function: \"" ^
-                        oper ^ "\""))
+exception EvalCase
+exception ApplyCase
+exception ApplyCase2
+exception ApplyCase3
+exception ApplyCase4
+fun type_error oper = 
+  raise_runtime_error (TYPE_ERROR("Invalid types to function " ^ oper))
+fun arity_error oper =
+  raise_runtime_error (MISMATCH_ARITY("Mismatch in arity for function " ^ oper))
 
-        fun print_line str = print (str ^ "\n")
-        fun compute_primitive "=" [x, y] env = ((BOOL(x = y)), env)
-          | compute_primitive "+" [(NUM(x)), (NUM(y))] env = ((NUM(x + y)), env)
-          | compute_primitive "+" [x, y] env = type_error "+"
-          | compute_primitive "-" [(NUM(x)), (NUM(y))] env = ((NUM(x - y)), env)
-          | compute_primitive "-" [x, y] env = type_error "-"
-          | compute_primitive "*" [(NUM(x)), (NUM(y))] env = ((NUM(x * y)), env)
-          | compute_primitive "*" [x, y] env = type_error "*"
-          | compute_primitive "/" [(NUM(x)), (NUM(y))] env =
-              if y = 0 then
-                raise_runtime_error (DIV_BY_ZERO("Divide by zero error"))
-              else ((NUM(floor(real(x) / real(y)))), env)
-          | compute_primitive "print" [NIL] env = (print_line "()"; (NIL, env))
-          | compute_primitive "print" [(BOOL(x))] env =
-              (if x then print_line "true"
-              else print_line "false";
-              ((BOOL(x)), env))
-          | compute_primitive "print" [(NUM(x))] env =
-              (print_line (Int.toString x); ((NUM(x)), env))
-          | compute_primitive "print" [(CLOSURE(s))] env =
-              (print_line "{closure}";
-                ((CLOSURE(s)), env))
-          | compute_primitive "print" _ env = arity_error "print"
-          | compute_primitive "if" [BOOL(false), _, false_arg] env = (false_arg, env)
-          | compute_primitive "if" [_, true_arg, _] env = (true_arg, env)
-          | compute_primitive oper _ env = arity_error oper
-        fun eval_args [] env arg_values = (arg_values, env)
-          | eval_args (arg::args) env arg_values =
-              let val (value, value_state) = eval arg env
-              in
-                eval_args args value_state (arg_values @ [value])
-              end
-        (*val (arg_list, arg_env) = eval_args exp_list env []*)
+fun value_equal(NUM(a), NUM(b)) = a = b
+  | value_equal(BOOL(a), BOOL(b)) = a = b
+  | value_equal(NIL, NIL) = true
+  | value_equal(_, _) = false
+
+fun get_bool_value(BOOL(truth), _) = truth
+  | get_bool_value(_, oper) = type_error oper
+
+fun print_ln str = print (str ^ "\n")
+
+fun eval_primitive("+", [x, y], env) =
+      let
+        val _ = print (exp_to_string x)
+        val _ = print "\n"
+        val (operand1, state1) = eval(x, env)
+        val (operand2, state2) = eval(y, state1)
+        fun apply(NUM(a), NUM(b)) =
+              (NUM(a + b), state2)
+          | apply(f, g) =
+            (print (value_to_string f); print (value_to_string g); type_error "primitive +")
+      in apply(operand1, operand2)
+      end
+  | eval_primitive("+", _, env) =
+      arity_error "primitive +"
+  | eval_primitive("-", [x, y], env) =
+      let
+        val (operand1, state1) = eval(x, env)
+        val (operand2, state2) = eval(y, state1)
+        fun apply(NUM(a), NUM(b)) =
+              (NUM(a - b), state2)
+          | apply(f, g) = type_error "primitive -"
+      in apply(operand1, operand2)
+      end
+  | eval_primitive("-", _, env) =
+      arity_error "primitive -"
+  | eval_primitive("*", [x, y], env) =
+      let
+        val (operand1, state1) = eval(x, env)
+        val (operand2, state2) = eval(y, state1)
+        fun apply(NUM(a), NUM(b)) =
+              (NUM(a * b), state2)
+          | apply(f, g) = type_error "primitive *"
+      in apply(operand1, operand2)
+      end
+  | eval_primitive("*", _, env) =
+      arity_error "primitive *"
+  | eval_primitive("/", [x, y], env) =
+      let
+        val (operand1, state1) = eval(x, env)
+        val (operand2, state2) = eval(y, state1)
+        fun apply(NUM(a), NUM(b)) =
+              if (not (b = 0)) then
+                  (NUM(floor(real(a) / real(b))), state2)
+              else raise_runtime_error
+                (DIV_BY_ZERO("Divide by zero error"))
+          | apply(f, g) = type_error "primitive /"
+      in apply(operand1, operand2)
+      end
+  | eval_primitive("/", _, env) =
+      arity_error "primitive /"
+  | eval_primitive("=", [x, y], env) =
+      let
+        val (operand1, state1) = eval(x, env)
+        val (operand2, state2) = eval(y, state1)
+        fun apply(NUM(a), NUM(b)) = (BOOL(a = b), state2)
+          | apply(BOOL(a), BOOL(b)) = (BOOL(a = b), state2)
+          | apply(_, _) = type_error "primitive ="
+      in apply(operand1, operand2)
+      end
+  | eval_primitive(">", [x, y], env) =
+      let
+        val (operand1, state1) = eval(x, env)
+        val (operand2, state2) = eval(y, state1)
+        fun apply(NUM(a), NUM(b)) = (BOOL(a > b), state2)
+          | apply(_, _) = type_error "primitive >"
+      in apply(operand1, operand2)
+      end
+  | eval_primitive(">", _, env) = arity_error "primitive >"
+  | eval_primitive("<", [x, y], env) =
+      let
+        (* TODO: (< 3 #t) reports type error for '>' *)
+        val (result, result_state) = eval_primitive(">", [x, y], env)
+        val result_truth = get_bool_value(result, "<")
+      in (BOOL(not result_truth), result_state)
+      end
+  | eval_primitive("<", _, env) = arity_error "primitive <"
+  | eval_primitive("check-expect", [x, y], env) =
+      let
+        val (result1, result_state1) = eval(x, env)
+        val (result2, result_state2) = eval(y, result_state1)
       in
-        if op_str = "lambda" then
-          let fun get_params_and_body [x] param_list = ((List.rev param_list), x)
-                | get_params_and_body ((VAR(x))::xs) param_list =
-                    get_params_and_body xs (x::param_list)
-                | get_params_and_body (_::xs) param_list = raise Match
-                | get_params_and_body [] _ = raise Match
-            val (params, body) = get_params_and_body exp_list []
-          in
-            ((CLOSURE((params, body), env)), env)
-          end
+        if value_equal(result1, result2) then
+          (print_ln "Test passed"; (NIL, env))
         else
-          let
-            val(arg_list, arg_env) = eval_args exp_list env []
-          in compute_primitive op_str arg_list arg_env
-          end
+          ((print_ln ("Test failed:\n\t " ^ (value_to_string result1) ^
+            " != " ^ (value_to_string result2))); (NIL, env))
       end
-and
-    eval (LIT(value)) env = (value, env)
-  | eval (VAR(ident)) env = ((find_env ident env), env)
-  | eval (LAMBDA(lambda)) env = ((CLOSURE(lambda, env)), env)
-  | eval (APPLY((VAR(ident)), exp_list)) env = 
-      if member_string ident primitive_funcs then
-        eval_primitive ident exp_list env
-      else
+  | eval_primitive("print", [x], env) =
       let
-        fun bind_args [] [] env = env
-          | bind_args (arg::args) (param::params) env =
-              let val (value, value_state) = eval arg env
-              in
-                bind_args args params (bind_env param value value_state)
-              end
-          | bind_args _ _ _ =
-              raise_runtime_error
-                (MISMATCH_ARITY("Mismatch in arity for method \"" ^
-                                ident ^ "\""))
-        val bound_value = find_env ident env
-        (*val (CLOSURE(((ident_list, body), captured_env))) = (case bound_value
-        * of*)
-        fun user_apply closure exp_list env =
-              let
-                val ident_list = get_param_list_from_closure closure
-                val body = get_body_from_closure closure
-                val new_env = bind_args exp_list ident_list env
-                val combined =
-                  combine_envs (get_env_from_closure closure) new_env
-              in eval body combined end
-
-        val (value, _) = (case bound_value of
-          (CLOSURE(((ident_list, body), captured_env))) =>
-            (user_apply (CLOSURE(((ident_list, body), captured_env))) exp_list
-              env)
-          | (PRIMITIVE(oper)) => eval_primitive oper exp_list env
-          | _ =>
-            raise_runtime_error
-              (UNDEFINED_METHOD("Method \"" ^ ident ^ "\" not found")))
-      in
-        (value, env)
+        val (result, result_state) = eval(x, env)
+        fun handle_print NIL =
+              (print_ln "()"; NIL)
+          | handle_print UNDEFINED =
+              (print_ln "<undefined>"; UNDEFINED)
+          | handle_print (BOOL(x)) =
+              ((if x then (print_ln "#t") else (print_ln "#f")); (BOOL(x)))
+          | handle_print (NUM(x)) =
+              if x < 0 then
+                (print "-"; print_ln (Int.toString (~x)); (NUM(x)))
+              else
+                (print_ln (Int.toString x); (NUM(x)))
+          | handle_print (CLOSURE(c)) = (print_ln "<lambda>"; (CLOSURE(c)))
+          | handle_print (PRIMITIVE(p)) =
+              (print_ln ("<primitive " ^ p ^ ">"); (PRIMITIVE(p)))
+      in (handle_print result, env)
       end
-  | eval (APPLY(exp, _)) env =
-      raise_runtime_error (INVALID_METHOD("Invalid method name: \"" ^
-                           exp_to_string exp ^ "\""))
+  | eval_primitive("if", [cond, true_exp, false_exp], env) =
+      let
+        val (cond_val, cond_state) = eval(cond, env)
+        val (result, result_state) =
+          if get_bool_value(cond_val, "if") then
+            eval(true_exp, cond_state)
+          else
+            eval(false_exp, cond_state)
+      in (result, result_state) end
+  | eval_primitive("if", _, env) =
+      raise_runtime_error(MISMATCH_ARITY("Wrong number of components in "^
+        "'if' expression"))
+  | eval_primitive(oper, _, _) = (print oper; raise ApplyCase3)
 
+and eval((LIT(v)), env) =
+      (v, env)
+  | eval(VAR(ident), env) =
+      if member_string ident primitive_funcs then (PRIMITIVE(ident), env)
+      else (find_env ident env, env)
+  | eval(APPLY(main_exp, arg_list), env) =
+      let
+        val (closure, closure_state) = eval(main_exp, env)
+        fun apply(CLOSURE((ident_list, body), captured_env)) =
+            let
+              fun bind_args [] [] env _ = env
+                | bind_args (a::args) (p::params) env ref_env =
+                    let
+                      val (value, value_state) = eval(a, ref_env)
+                      val new_state = (bind_env p value value_state)
+                    in bind_args args params new_state ref_env
+                    end
+                | bind_args _ _ _ _ = arity_error (exp_to_string main_exp)
+              val bound_env = bind_args arg_list ident_list captured_env env
+              val (result, _) = eval(body, bound_env)
+            in (result, closure_state)
+            end
+          | apply(PRIMITIVE(ident)) =
+              eval_primitive(ident, arg_list, env)
+
+          | apply(value) = raise_runtime_error
+              (INVALID_METHOD("Value " ^ (value_to_string value) ^
+                " does not evaluate to a closure"))
+
+      in apply(closure)
+      end
+  | eval(LAMBDA((ident_list, body)), env) =
+      (CLOSURE((ident_list, body), env), env)
 fun execute defs =
       let
+        fun check_reserved (PRIMITIVE(p)) =
+          if member_string p reserved_idents then
+            raise_runtime_error(RESERVED_KEYWORD("Reserved keyword: \"" ^
+                p ^ "\""))
+          else true
+          | check_reserved _ = true
         fun execute_def (VAL((ident, exp))) env =
               let
-                val (result, new_env) = eval exp env
+                val (result, new_env) = eval(exp, env)
+                val _ = check_reserved result
               in
                 (bind_env ident result env)
               end
           | execute_def (EXP(exp)) env =
               let
-                val (result, new_env) = eval exp env
+                val (result, new_env) = eval(exp, env)
+                val _ = check_reserved result
               in
                 new_env
               end
           | execute_def (DEFINE((ident, lambda))) env =
-              (bind_env
-                ident
-                (CLOSURE((lambda: (identifier list * exp),
-                         env)))
-                env)
+              let
+                val (closure, result_env) = eval(LAMBDA lambda, env)
+              in
+                (bind_env
+                  ident
+                  (CLOSURE((lambda: (identifier list * exp),
+                           (combine_envs [(ident, closure)] env))))
+                  env)
+              end
       in
         List.foldl (fn (def, old_env) => execute_def def old_env) init_env defs
       end
