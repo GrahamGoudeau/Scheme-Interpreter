@@ -37,9 +37,8 @@ fun main () =
       val text = get_chars_from_filestream input_stream
       val _ = TextIO.closeIn input_stream
       val defs = parse_loop text
-      (*val _ = List.map (fn def => print_def def) defs*)
-    val final_env = execute defs
-  in print_all_env final_env
+      val final_env = execute defs
+  in ()
   end
 
 val _ = main ()
