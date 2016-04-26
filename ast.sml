@@ -89,6 +89,8 @@ exception TypeError
 exception DivideByZero
 exception UnexpectedRuntimeError
 exception ReservedKeyword
+exception OutOfMemory
+exception InvalidAddress
 
 datatype runtime_Error = VAR_NOT_BOUND of error_message
                        | INVALID_METHOD of error_message
@@ -98,15 +100,23 @@ datatype runtime_Error = VAR_NOT_BOUND of error_message
                        | DIV_BY_ZERO of error_message
                        | UNEXPECTED of error_message
                        | RESERVED_KEYWORD of error_message
+                       | OUT_OF_MEMORY of error_message
+                       | INVALID_ADDR of error_message
 
 fun raise_runtime_error error =
   let
     val runtime_err_msg = "Runtime error:\n\t - \""
     fun get_msg msg = runtime_err_msg ^ msg ^ "\"\n"
+    fun print_and_raise msg excpn =
+          (print (get_msg msg); raise excpn)
     fun handle_error (VAR_NOT_BOUND(msg)) =
           (print (get_msg msg); raise VariableNotBound)
       | handle_error (INVALID_METHOD(msg)) =
           (print (get_msg msg); raise InvalidMethodName)
+      | handle_error (OUT_OF_MEMORY(msg)) =
+          (print (get_msg msg); raise OutOfMemory)
+      | handle_error (INVALID_ADDR(msg)) =
+          print_and_raise msg InvalidAddress
       | handle_error (UNDEFINED_METHOD(msg)) =
           (print (get_msg msg); raise UndefinedMethod)
       | handle_error (MISMATCH_ARITY(msg)) =
@@ -147,7 +157,12 @@ local
                               next_mem := !next_mem + 1
   in
   fun bind_memory t = !next_mem before new_store_value t
+        handle Subscript => raise_runtime_error
+                              (OUT_OF_MEMORY "Out of memory")
   fun update_memory t index = Array.update(memory, index, t)
+        handle Subscript => raise_runtime_error
+                              (INVALID_ADDR ("Invalid memory address: " ^
+                                  (Int.toString index)))
   end
 
 type env = (identifier * int) list
