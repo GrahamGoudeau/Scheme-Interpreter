@@ -5,7 +5,7 @@ datatype value = NIL
                | BOOL of bool
                | NUM of int
                | CLOSURE of
-                   ((identifier list) * exp) * ((identifier * value) list)
+                   ((identifier list) * exp) * ((identifier * int) list)
                | PRIMITIVE of identifier
                | UNDEFINED
                (*
@@ -136,30 +136,47 @@ fun get_env_from_closure (CLOSURE((_, env))) = env
       raise_runtime_error
         (UNEXPECTED("Unexpected error while getting closure environment"))
 
+val mem_size = 10000
+val memory = Array.fromList (List.tabulate (mem_size, (fn _ => UNDEFINED)))
+val mem_undefined_loc = 0
 
-(*datatype env = ENV of (identifier * value) list*)
-type env = (identifier * value) list
+(* return the memory address of the stored value *)
+local
+    val next_mem = ref 1
+    fun new_store_value value = Array.update(memory, !next_mem, value) before
+                              next_mem := !next_mem + 1
+  in
+  fun bind_memory t = !next_mem before new_store_value t
+  fun update_memory t index = Array.update(memory, index, t)
+  end
 
-(*val init_env = (ENV([]))*)
-val init_env = [] : env
+type env = (identifier * int) list
+
+val init_env : env = []
 
 fun combine_envs env1 env2 = env1 @ env2
 
 fun print_all_env (xs: env) =
   (print "=== Environment state: ===\n";
    List.map
-     (fn (ident, value) => print ("{" ^ ident ^ ", " ^
-                                  (value_to_string value) ^ "}\n"))
+     (fn (ident, index) => print ("{" ^ ident ^ ", " ^
+              (value_to_string (Array.sub(memory, index))) ^ "}\n"))
      xs;
    print "\n")
 
-fun bind_env key value (xs: env) = (key, value)::xs
+fun bind_env key value (xs: env) = (key, (bind_memory value))::xs
 
-fun find_env key [] =
+fun find_env_index key [] =
       raise_runtime_error (VAR_NOT_BOUND("Var \"" ^ key ^ "\" not bound"))
-  | find_env key ((ident, value)::xs) =
-      if key = ident then value
-      else find_env key xs
+  | find_env_index key ((ident, index)::xs) =
+      if key = ident then index
+      else find_env_index key xs
+
+fun find_env_val key [] =
+      raise_runtime_error (VAR_NOT_BOUND("Var \"" ^ key ^ "\" not bound"))
+  | find_env_val key ((ident, index)::xs) =
+      if key = ident then Array.sub(memory, index)
+      else find_env_val key xs
 
 exception EvalCase
 exception ApplyCase
@@ -183,24 +200,22 @@ fun print_ln str = print (str ^ "\n")
 
 fun eval_primitive("+", [x, y], env) =
       let
-        val _ = print (exp_to_string x)
-        val _ = print "\n"
-        val (operand1, state1) = eval(x, env)
-        val (operand2, state2) = eval(y, state1)
+        val (operand1, _) = eval(x, env)
+        val (operand2, _) = eval(y, env)
         fun apply(NUM(a), NUM(b)) =
-              (NUM(a + b), state2)
+              (NUM(a + b), env)
           | apply(f, g) =
-            (print (value_to_string f); print (value_to_string g); type_error "primitive +")
+              type_error "primitive +"
       in apply(operand1, operand2)
       end
   | eval_primitive("+", _, env) =
       arity_error "primitive +"
   | eval_primitive("-", [x, y], env) =
       let
-        val (operand1, state1) = eval(x, env)
-        val (operand2, state2) = eval(y, state1)
+        val (operand1, _) = eval(x, env)
+        val (operand2, _) = eval(y, env)
         fun apply(NUM(a), NUM(b)) =
-              (NUM(a - b), state2)
+              (NUM(a - b), env)
           | apply(f, g) = type_error "primitive -"
       in apply(operand1, operand2)
       end
@@ -208,10 +223,10 @@ fun eval_primitive("+", [x, y], env) =
       arity_error "primitive -"
   | eval_primitive("*", [x, y], env) =
       let
-        val (operand1, state1) = eval(x, env)
-        val (operand2, state2) = eval(y, state1)
+        val (operand1, _) = eval(x, env)
+        val (operand2, _) = eval(y, env)
         fun apply(NUM(a), NUM(b)) =
-              (NUM(a * b), state2)
+              (NUM(a * b), env)
           | apply(f, g) = type_error "primitive *"
       in apply(operand1, operand2)
       end
@@ -219,11 +234,11 @@ fun eval_primitive("+", [x, y], env) =
       arity_error "primitive *"
   | eval_primitive("/", [x, y], env) =
       let
-        val (operand1, state1) = eval(x, env)
-        val (operand2, state2) = eval(y, state1)
+        val (operand1, _) = eval(x, env)
+        val (operand2, _) = eval(y, env)
         fun apply(NUM(a), NUM(b)) =
               if (not (b = 0)) then
-                  (NUM(floor(real(a) / real(b))), state2)
+                  (NUM(floor(real(a) / real(b))), env)
               else raise_runtime_error
                 (DIV_BY_ZERO("Divide by zero error"))
           | apply(f, g) = type_error "primitive /"
@@ -242,9 +257,9 @@ fun eval_primitive("+", [x, y], env) =
       end
   | eval_primitive(">", [x, y], env) =
       let
-        val (operand1, state1) = eval(x, env)
-        val (operand2, state2) = eval(y, state1)
-        fun apply(NUM(a), NUM(b)) = (BOOL(a > b), state2)
+        val (operand1, _) = eval(x, env)
+        val (operand2, _) = eval(y, env)
+        fun apply(NUM(a), NUM(b)) = (BOOL(a > b), env)
           | apply(_, _) = type_error "primitive >"
       in apply(operand1, operand2)
       end
@@ -252,15 +267,17 @@ fun eval_primitive("+", [x, y], env) =
   | eval_primitive("<", [x, y], env) =
       let
         (* TODO: (< 3 #t) reports type error for '>' *)
-        val (result, result_state) = eval_primitive(">", [x, y], env)
-        val result_truth = get_bool_value(result, "<")
-      in (BOOL(not result_truth), result_state)
+        val (operand1, _) = eval(x, env)
+        val (operand2, _) = eval(y, env)
+        fun apply(NUM(a), NUM(b)) = (BOOL(a < b), env)
+          | apply(_, _) = type_error "primitive <"
+      in apply(operand1, operand2)
       end
   | eval_primitive("<", _, env) = arity_error "primitive <"
   | eval_primitive("check-expect", [x, y], env) =
       let
-        val (result1, result_state1) = eval(x, env)
-        val (result2, result_state2) = eval(y, result_state1)
+        val (result1, _) = eval(x, env)
+        val (result2, _) = eval(y, env)
       in
         if value_equal(result1, result2) then
           (print_ln "Test passed"; (NIL, env))
@@ -289,13 +306,13 @@ fun eval_primitive("+", [x, y], env) =
       end
   | eval_primitive("if", [cond, true_exp, false_exp], env) =
       let
-        val (cond_val, cond_state) = eval(cond, env)
-        val (result, result_state) =
+        val (cond_val, _) = eval(cond, env)
+        val (result, _) =
           if get_bool_value(cond_val, "if") then
-            eval(true_exp, cond_state)
+            eval(true_exp, env)
           else
-            eval(false_exp, cond_state)
-      in (result, result_state) end
+            eval(false_exp, env)
+      in (result, env) end
   | eval_primitive("if", _, env) =
       raise_runtime_error(MISMATCH_ARITY("Wrong number of components in "^
         "'if' expression"))
@@ -305,26 +322,31 @@ and eval((LIT(v)), env) =
       (v, env)
   | eval(VAR(ident), env) =
       if member_string ident primitive_funcs then (PRIMITIVE(ident), env)
-      else (find_env ident env, env)
+      else (find_env_val ident env, env)
   | eval(APPLY(main_exp, arg_list), env) =
       let
         val (closure, closure_state) = eval(main_exp, env)
+        val main_str = exp_to_string main_exp
         fun apply(CLOSURE((ident_list, body), captured_env)) =
             let
               fun bind_args [] [] env _ = env
                 | bind_args (a::args) (p::params) env ref_env =
                     let
-                      val (value, value_state) = eval(a, ref_env)
-                      val new_state = (bind_env p value value_state)
+                      val (value, _) = eval(a, ref_env)
+                      val new_state : env = (bind_env p value env)
                     in bind_args args params new_state ref_env
                     end
                 | bind_args _ _ _ _ = arity_error (exp_to_string main_exp)
               val bound_env = bind_args arg_list ident_list captured_env env
               val (result, _) = eval(body, bound_env)
-            in (result, closure_state)
+            in (result, env)
             end
           | apply(PRIMITIVE(ident)) =
-              eval_primitive(ident, arg_list, env)
+          let
+            val (result, res_env) = eval_primitive(ident, arg_list, env)
+          in
+            (result, res_env)
+          end
 
           | apply(value) = raise_runtime_error
               (INVALID_METHOD("Value " ^ (value_to_string value) ^
@@ -358,13 +380,11 @@ fun execute defs =
               end
           | execute_def (DEFINE((ident, lambda))) env =
               let
-                val (closure, result_env) = eval(LAMBDA lambda, env)
+                val rho' = bind_env ident UNDEFINED env
+                val (closure, result_env) = eval(LAMBDA lambda, rho')
+                val _ = update_memory closure (find_env_index ident rho')
               in
-                (bind_env
-                  ident
-                  (CLOSURE((lambda: (identifier list * exp),
-                           (combine_envs [(ident, closure)] env))))
-                  env)
+                rho'
               end
       in
         List.foldl (fn (def, old_env) => execute_def def old_env) init_env defs
