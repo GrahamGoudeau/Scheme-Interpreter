@@ -199,11 +199,6 @@ fun find_env_val key [] =
       if key = ident then find_memory index
       else find_env_val key xs
 
-exception EvalCase
-exception ApplyCase
-exception ApplyCase2
-exception ApplyCase3
-exception ApplyCase4
 fun type_error oper = 
   raise_runtime_error (TYPE_ERROR("Invalid types to function " ^ oper))
 fun arity_error oper =
@@ -372,7 +367,9 @@ fun eval_primitive("+", [x, y], env) =
   | eval_primitive("if", _, env) =
       raise_runtime_error(MISMATCH_ARITY("Wrong number of components in "^
         "'if' expression"))
-  | eval_primitive(oper, _, _) = (print oper; raise ApplyCase3)
+  | eval_primitive(oper, _, _) =
+      raise_runtime_error(UNEXPECTED("Unexpected primitive case on '" ^
+                                        oper ^ "'"))
 
 and eval((LIT(v)), env) =
       (v, env)
