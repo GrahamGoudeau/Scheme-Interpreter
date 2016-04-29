@@ -49,7 +49,8 @@ val primitive_funcs_arity =
 
 val reserved_idents = ["if", "lambda"]
 val primitive_funcs =
-  ["=", "+", "-", "*", "/", "<", ">", "print", "check-expect"]
+  ["=", "+", "-", "*", "/", "<", ">", "print", "check-expect", "mod", "not",
+   "and", "or"]
 (*val primitive_funcs = List.map (fn (oper, _) => oper) primitive_funcs_arity*)
 val primitive_funcs = reserved_idents @ primitive_funcs
 
@@ -159,6 +160,11 @@ local
   fun bind_memory t = !next_mem before new_store_value t
         handle Subscript => raise_runtime_error
                               (OUT_OF_MEMORY "Out of memory")
+
+  fun find_memory index = Array.sub(memory, index)
+        handle Subscript => raise_runtime_error
+                              (INVALID_ADDR "Unmapped memory address")
+
   fun update_memory t index = Array.update(memory, index, t)
         handle Subscript => raise_runtime_error
                               (INVALID_ADDR ("Invalid memory address: " ^
@@ -175,7 +181,7 @@ fun print_all_env (xs: env) =
   (print "=== Environment state: ===\n";
    List.map
      (fn (ident, index) => print ("{" ^ ident ^ ", " ^
-              (value_to_string (Array.sub(memory, index))) ^ "}\n"))
+              (value_to_string (find_memory index)) ^ "}\n"))
      xs;
    print "\n")
 
@@ -190,7 +196,7 @@ fun find_env_index key [] =
 fun find_env_val key [] =
       raise_runtime_error (VAR_NOT_BOUND("Var \"" ^ key ^ "\" not bound"))
   | find_env_val key ((ident, index)::xs) =
-      if key = ident then Array.sub(memory, index)
+      if key = ident then find_memory index
       else find_env_val key xs
 
 exception EvalCase
