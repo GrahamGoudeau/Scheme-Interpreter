@@ -276,6 +276,39 @@ fun eval_primitive("+", [x, y], env) =
           | apply(_, _) = type_error "primitive ="
       in apply(operand1, operand2)
       end
+  | eval_primitive("mod", [x, y], env) =
+      let
+        val (operand1, state1) = eval(x, env)
+        val (operand2, state2) = eval(y, state1)
+        fun apply(NUM(a), NUM(b)) = (NUM(a mod b), state2)
+          | apply(_, _) = type_error "primitive mod"
+      in apply(operand1, operand2) end
+  | eval_primitive("mod", _, _) =
+      arity_error "primitive mod"
+  | eval_primitive("and", [x, y], env) =
+      (case eval(x, env) of
+        (BOOL(a), state1) =>
+          if not a then (BOOL(a), state1)
+          else eval(y, state1)
+        | _ => type_error "primitive and")
+  | eval_primitive("and", _, _) =
+      arity_error "primitive and"
+  | eval_primitive("or", [x, y], env) =
+      (case eval(x, env) of
+        (BOOL(a), state1) =>
+          if a then (BOOL(a), state1)
+          else eval(y, state1)
+        | _ => type_error "primitive or")
+  | eval_primitive("or", _, _) =
+      arity_error "primitive or"
+  | eval_primitive("not", [x], env) =
+      let
+        val (operand, state) = eval(x, env)
+        fun apply(BOOL(a)) = (BOOL(not a), state)
+          | apply(_) = type_error "primitive not"
+      in apply(operand) end
+  | eval_primitive("not", _, env) =
+      arity_error "primitive not"
   | eval_primitive(">", [x, y], env) =
       let
         val (operand1, _) = eval(x, env)
