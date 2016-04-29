@@ -11,4 +11,5 @@
 (check-expect (find-divisor 3 2) 3)
 (check-expect (prime 2) #t)
 (check-expect (prime 3) #t)
-(check-expect (prime 4) #f)
+(check-expect (prime 45) #f)
+(check-expect (prime 189) #f)

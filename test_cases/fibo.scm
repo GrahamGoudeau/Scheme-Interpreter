@@ -10,3 +10,4 @@
 (check-expect (fibo 2) 1)
 (check-expect (fibo 3) 2)
 (check-expect (fibo 12) 144)
+(check-expect (fibo 22) 17711)
