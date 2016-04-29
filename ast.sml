@@ -339,6 +339,8 @@ fun eval_primitive("+", [x, y], env) =
           ((print_ln ("Test failed:\n\t " ^ (value_to_string result1) ^
             " != " ^ (value_to_string result2))); (NIL, env))
       end
+  | eval_primitive("check-expect", _, env) =
+      arity_error "primitive check-expect"
   | eval_primitive("print", [x], env) =
       let
         val (result, result_state) = eval(x, env)
