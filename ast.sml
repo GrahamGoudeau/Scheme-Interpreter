@@ -147,19 +147,35 @@ fun get_env_from_closure (CLOSURE((_, env))) = env
       raise_runtime_error
         (UNEXPECTED("Unexpected error while getting closure environment"))
 
-val mem_size = 10000
-val memory = Array.fromList (List.tabulate (mem_size, (fn _ => UNDEFINED)))
 val mem_undefined_loc = 0
 
 (* return the memory address of the stored value *)
 local
+    val unused_addrs = ref []
+    val mem_size = 100000
+    val memory = Array.fromList (List.tabulate (mem_size, (fn _ => UNDEFINED)))
     val next_mem = ref 1
+
+    fun print_mem () =
+      (print "~~Memory~~\n";
+       Array.foldl (fn (v, n) =>
+        (print ((Int.toString n) ^ ": ");
+         print (value_to_string v); print " "; n+1)) 0 memory)
+
     fun new_store_value value = Array.update(memory, !next_mem, value) before
                               next_mem := !next_mem + 1
   in
-  fun bind_memory t = !next_mem before new_store_value t
-        handle Subscript => raise_runtime_error
-                              (OUT_OF_MEMORY "Out of memory")
+  fun garbage_collect addrs =
+        let
+          val _ = unused_addrs := []
+          fun get_unused n =
+            if (n < (!next_mem)) then
+              if not (List.exists (fn m => m = n) addrs) andalso (n > 0) then
+                (unused_addrs := (n :: (!unused_addrs))) before get_unused (n + 1)
+              else get_unused (n + 1)
+            else ()
+
+        in !unused_addrs before (get_unused 0) end
 
   fun find_memory index = Array.sub(memory, index)
         handle Subscript => raise_runtime_error
@@ -169,6 +185,15 @@ local
         handle Subscript => raise_runtime_error
                               (INVALID_ADDR ("Invalid memory address: " ^
                                   (Int.toString index)))
+
+  fun bind_memory t =
+        (*!next_mem before new_store_value t*)
+         (case (!unused_addrs) of
+              [] => !next_mem before new_store_value t
+            | (m::ms) => m before
+                            (unused_addrs := ms; update_memory t m))
+        handle Subscript => raise_runtime_error
+                              (OUT_OF_MEMORY "Out of memory")
   end
 
 type env = (identifier * int) list
@@ -428,6 +453,7 @@ fun execute defs =
               let
                 val (result, new_env) = eval(exp, env)
                 val _ = check_reserved result
+                val _ = garbage_collect (List.map (fn (_, addr) => addr) new_env)
               in
                 new_env
               end
