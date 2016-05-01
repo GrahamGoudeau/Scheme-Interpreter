@@ -1,17 +1,24 @@
-fun get_chars_from_filestream in_file =
+exception ProblemWithFile
+fun file_problem name =
+  (print ("Problem reading from file '" ^ name ^ "'\n"); raise ProblemWithFile)
+
+fun get_chars_from_filestream in_file filename =
   let
     val default_state = (STATE([], ~1, ~1))
     fun accumulate NONE = []
         | accumulate c = ((strip_option default_state c) :: (accumulate (TextIO.input1 in_file)))
   in accumulate (TextIO.input1 in_file)
+      handle Io => file_problem filename
   end
 
 exception ImproperUsage
 
-fun print_usage () = print "Usage: ./{script} [filename]\n\n"
+fun print_usage () =
+  print "Usage: ./{script} filename [-gc=no (disable garbage collection)]\n\n"
 
 fun parse_args [] = (print_usage(); raise ImproperUsage)
-  | parse_args [x] = x
+  | parse_args [x] = (x, true)
+  | parse_args [x, "-gc=no"] = (x, false)
   | parse_args _ = (print_usage(); raise ImproperUsage)
 
 fun parse_loop text =
@@ -32,12 +39,12 @@ end
 
 fun main () =
   let val sys_argv = CommandLine.arguments()
-      val input_filename = parse_args sys_argv
+      val (input_filename, do_garbage_collect) = parse_args sys_argv
       val input_stream = TextIO.openIn input_filename
       val text = get_chars_from_filestream input_stream
       val _ = TextIO.closeIn input_stream
       val defs = parse_loop text
-      val final_env = execute defs
+      val final_env = execute defs do_garbage_collect
   in ()
   end
 

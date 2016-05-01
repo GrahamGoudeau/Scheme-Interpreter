@@ -164,7 +164,10 @@ local
 
     fun new_store_value value = Array.update(memory, !next_mem, value) before
                               next_mem := !next_mem + 1
+    val do_garbage_collect = ref true
   in
+
+  fun set_garbage_collect do_collect = do_garbage_collect := do_collect
   fun garbage_collect addrs =
         let
           val _ = unused_addrs := []
@@ -187,11 +190,14 @@ local
                                   (Int.toString index)))
 
   fun bind_memory t =
-        (*!next_mem before new_store_value t*)
-         (case (!unused_addrs) of
-              [] => !next_mem before new_store_value t
-            | (m::ms) => m before
-                            (unused_addrs := ms; update_memory t m))
+        (if !do_garbage_collect then
+           (case (!unused_addrs) of
+                [] => !next_mem before new_store_value t
+              | (m::ms) => m before
+                              (unused_addrs := ms; update_memory t m))
+        else
+          !next_mem before new_store_value t)
+
         handle Subscript => raise_runtime_error
                               (OUT_OF_MEMORY "Out of memory")
   end
@@ -434,13 +440,16 @@ and eval((LIT(v)), env) =
       end
   | eval(LAMBDA((ident_list, body)), env) =
       (CLOSURE((ident_list, body), env), env)
-fun execute defs =
+
+fun execute defs do_garbage_collect =
       let
+        val _ = set_garbage_collect do_garbage_collect
         fun check_reserved (PRIMITIVE(p)) =
           if member_string p reserved_idents then
             raise_runtime_error(RESERVED_KEYWORD("Reserved keyword: \"" ^
                 p ^ "\""))
           else true
+
           | check_reserved _ = true
         fun execute_def (VAL((ident, exp))) env =
               let
@@ -453,7 +462,9 @@ fun execute defs =
               let
                 val (result, new_env) = eval(exp, env)
                 val _ = check_reserved result
-                val _ = garbage_collect (List.map (fn (_, addr) => addr) new_env)
+                val _ = if do_garbage_collect then
+                          garbage_collect (List.map (fn (_, addr) => addr) new_env)
+                        else []
               in
                 new_env
               end
