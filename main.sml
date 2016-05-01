@@ -36,12 +36,12 @@ in
   accumulate_defs (init_state text) []
 end
 
-
 fun main () =
   let val sys_argv = CommandLine.arguments()
       val (input_filename, do_garbage_collect) = parse_args sys_argv
       val input_stream = TextIO.openIn input_filename
-      val text = get_chars_from_filestream input_stream
+        handle Io => file_problem input_filename
+      val text = get_chars_from_filestream input_stream input_filename
       val _ = TextIO.closeIn input_stream
       val defs = parse_loop text
       val final_env = execute defs do_garbage_collect
