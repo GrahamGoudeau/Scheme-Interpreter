@@ -57,13 +57,13 @@ val primitive_funcs = reserved_idents @ primitive_funcs
 fun member_string (elem:string) (xs:string list) =
   List.exists (fn x => x = elem) xs
 
-fun value_to_string (NIL) = "[value: NIL]"
-  | value_to_string (BOOL(true)) = "[value: #t]"
-  | value_to_string (BOOL(false)) = "[value: #f]"
-  | value_to_string (NUM(int)) = "[value: " ^ (Int.toString int) ^ "]"
-  | value_to_string (CLOSURE(lambda, env)) = "[value: closure]"
-  | value_to_string (PRIMITIVE(ident)) = "[primitive op: " ^ ident ^ "]"
-  | value_to_string UNDEFINED = "[value: <undefined>]"
+fun value_to_string (NIL) = "NIL"
+  | value_to_string (BOOL(true)) = "#t"
+  | value_to_string (BOOL(false)) = "#f"
+  | value_to_string (NUM(int)) = (Int.toString int)
+  | value_to_string (CLOSURE(lambda, env)) = "<closure>"
+  | value_to_string (PRIMITIVE(ident)) = "[primitive func: " ^ ident ^ "]"
+  | value_to_string UNDEFINED = "<undefined>"
 
 fun exp_to_string (LIT(value)) = value_to_string value
   | exp_to_string (VAR(var)) = "[var " ^ var ^ "]"
@@ -350,21 +350,10 @@ fun eval_primitive("+", [x, y], env) =
   | eval_primitive("print", [x], env) =
       let
         val (result, result_state) = eval(x, env)
-        fun handle_print NIL =
-              (print_ln "()"; NIL)
-          | handle_print UNDEFINED =
-              (print_ln "<undefined>"; UNDEFINED)
-          | handle_print (BOOL(x)) =
-              ((if x then (print_ln "#t") else (print_ln "#f")); (BOOL(x)))
-          | handle_print (NUM(x)) =
-              if x < 0 then
-                (print "-"; print_ln (Int.toString (~x)); (NUM(x)))
-              else
-                (print_ln (Int.toString x); (NUM(x)))
-          | handle_print (CLOSURE(c)) = (print_ln "<lambda>"; (CLOSURE(c)))
-          | handle_print (PRIMITIVE(p)) =
-              (print_ln ("<primitive " ^ p ^ ">"); (PRIMITIVE(p)))
-      in (handle_print result, env)
+        val result_str = value_to_string result
+        val _ = print_ln result_str
+      in
+        (result, env)
       end
   | eval_primitive("if", [cond, true_exp, false_exp], env) =
       let
