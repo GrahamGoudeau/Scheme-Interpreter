@@ -517,31 +517,3 @@ fun parse state =
   in
     parse_def skipped
   end
-
-fun test_suite do_run =
-  if do_run then
-    let
-      val default_state = (STATE([], 1, 1))
-      val (test_ident1, _) = parse_identifier (STATE((String.explode "    \n de.finex0? := 4;\n"), 1,
-        1)) true
-      val (test_ident2, _) = parse_identifier (STATE((String.explode "  (let"), 1, 1))
-        false
-    in
-      (if not (test_ident1 = (SOME([#"d", #"e"]))) then
-        raise_syntax_error default_state (TEST_FAILED("Identifier test 1 fail"))
-       else 1;
-       if not (test_ident2 = NONE) then
-         raise_syntax_error default_state (TEST_FAILED("Ident test 2 fail"))
-       else 1)
-    end
- else 1
-
-val s = String.explode
-(*
-val x = test_suite do_test
-val a = parse_boolean (STATE(s "#t   \n", 1, 1))
-val b = parse_def (STATE(s "(define f (z) #t)", 1, 1))
-*)
-val x = parse_expression (STATE(s "-", 1, 1))
-val y = char_list_is_int (String.explode "-")
-val z = parse_expression (STATE(s "1", 1, 1))
