@@ -255,8 +255,6 @@ fun eval_primitive("+", [x, y], env) =
               type_error "primitive +"
       in apply(operand1, operand2)
       end
-  | eval_primitive("+", _, env) =
-      arity_error "primitive +"
   | eval_primitive("-", [x, y], env) =
       let
         val (operand1, _) = eval(x, env)
@@ -266,8 +264,6 @@ fun eval_primitive("+", [x, y], env) =
           | apply(f, g) = type_error "primitive -"
       in apply(operand1, operand2)
       end
-  | eval_primitive("-", _, env) =
-      arity_error "primitive -"
   | eval_primitive("*", [x, y], env) =
       let
         val (operand1, _) = eval(x, env)
@@ -277,8 +273,6 @@ fun eval_primitive("+", [x, y], env) =
           | apply(f, g) = type_error "primitive *"
       in apply(operand1, operand2)
       end
-  | eval_primitive("*", _, env) =
-      arity_error "primitive *"
   | eval_primitive("/", [x, y], env) =
       let
         val (operand1, _) = eval(x, env)
@@ -291,8 +285,6 @@ fun eval_primitive("+", [x, y], env) =
           | apply(f, g) = type_error "primitive /"
       in apply(operand1, operand2)
       end
-  | eval_primitive("/", _, env) =
-      arity_error "primitive /"
   | eval_primitive("=", [x, y], env) =
       let
         val (operand1, state1) = eval(x, env)
@@ -309,32 +301,24 @@ fun eval_primitive("+", [x, y], env) =
         fun apply(NUM(a), NUM(b)) = (NUM(a mod b), state2)
           | apply(_, _) = type_error "primitive mod"
       in apply(operand1, operand2) end
-  | eval_primitive("mod", _, _) =
-      arity_error "primitive mod"
   | eval_primitive("and", [x, y], env) =
       (case eval(x, env) of
         (BOOL(a), state1) =>
           if not a then (BOOL(a), state1)
           else eval(y, state1)
         | _ => type_error "primitive and")
-  | eval_primitive("and", _, _) =
-      arity_error "primitive and"
   | eval_primitive("or", [x, y], env) =
       (case eval(x, env) of
         (BOOL(a), state1) =>
           if a then (BOOL(a), state1)
           else eval(y, state1)
         | _ => type_error "primitive or")
-  | eval_primitive("or", _, _) =
-      arity_error "primitive or"
   | eval_primitive("not", [x], env) =
       let
         val (operand, state) = eval(x, env)
         fun apply(BOOL(a)) = (BOOL(not a), state)
           | apply(_) = type_error "primitive not"
       in apply(operand) end
-  | eval_primitive("not", _, env) =
-      arity_error "primitive not"
   | eval_primitive(">", [x, y], env) =
       let
         val (operand1, _) = eval(x, env)
@@ -343,7 +327,6 @@ fun eval_primitive("+", [x, y], env) =
           | apply(_, _) = type_error "primitive >"
       in apply(operand1, operand2)
       end
-  | eval_primitive(">", _, env) = arity_error "primitive >"
   | eval_primitive("<", [x, y], env) =
       let
         (* TODO: (< 3 #t) reports type error for '>' *)
@@ -353,7 +336,6 @@ fun eval_primitive("+", [x, y], env) =
           | apply(_, _) = type_error "primitive <"
       in apply(operand1, operand2)
       end
-  | eval_primitive("<", _, env) = arity_error "primitive <"
   | eval_primitive("check-expect", [x, y], env) =
       let
         val (result1, _) = eval(x, env)
@@ -365,8 +347,6 @@ fun eval_primitive("+", [x, y], env) =
           ((print_ln ("Test failed:\n\t " ^ (value_to_string result1) ^
             " != " ^ (value_to_string result2))); (NIL, env))
       end
-  | eval_primitive("check-expect", _, env) =
-      arity_error "primitive check-expect"
   | eval_primitive("print", [x], env) =
       let
         val (result, result_state) = eval(x, env)
@@ -386,8 +366,6 @@ fun eval_primitive("+", [x, y], env) =
               (print_ln ("<primitive " ^ p ^ ">"); (PRIMITIVE(p)))
       in (handle_print result, env)
       end
-  | eval_primitive("print", _, _) =
-      arity_error "primitive print"
   | eval_primitive("if", [cond, true_exp, false_exp], env) =
       let
         val (cond_val, _) = eval(cond, env)
@@ -401,8 +379,7 @@ fun eval_primitive("+", [x, y], env) =
       raise_runtime_error(MISMATCH_ARITY("Wrong number of components in "^
         "'if' expression"))
   | eval_primitive(oper, _, _) =
-      raise_runtime_error(UNEXPECTED("Unexpected primitive case on '" ^
-                                        oper ^ "'"))
+      arity_error ("primitive '" ^ oper ^ "'")
 
 and eval((LIT(v)), env) =
       (v, env)
