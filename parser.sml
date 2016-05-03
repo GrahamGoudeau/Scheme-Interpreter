@@ -368,7 +368,7 @@ fun parse_expression state =
           in (APPLY(main_expr, exps), exps_state)
           end
         else
-          let 
+          let
              val (skip_param_paren, param_paren_state) =
                parse_str_literal skipped_ws2 "(" true
              val skipped_ws_3 = skip_whitespace param_paren_state

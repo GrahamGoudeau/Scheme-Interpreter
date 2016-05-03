@@ -230,7 +230,7 @@ fun find_env_val key [] =
       if key = ident then find_memory index
       else find_env_val key xs
 
-fun type_error oper = 
+fun type_error oper =
   raise_runtime_error (TYPE_ERROR("Invalid types to function " ^ oper))
 fun arity_error oper =
   raise_runtime_error (MISMATCH_ARITY("Mismatch in arity for function " ^ oper))
@@ -386,6 +386,8 @@ fun eval_primitive("+", [x, y], env) =
               (print_ln ("<primitive " ^ p ^ ">"); (PRIMITIVE(p)))
       in (handle_print result, env)
       end
+  | eval_primitive("print", _, _) =
+      arity_error "primitive print"
   | eval_primitive("if", [cond, true_exp, false_exp], env) =
       let
         val (cond_val, _) = eval(cond, env)
