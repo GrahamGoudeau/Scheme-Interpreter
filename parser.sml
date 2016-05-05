@@ -1,9 +1,3 @@
-(*TODO: remove "fail" conditions from functions;
-* add try_parse_* functions, and let main ones fail
-*)
-
-val do_test = false
-
 (* tuples of: unparsed text, line, column *)
 type line = int
 type column = int
@@ -11,10 +5,6 @@ type text = char list
 datatype ParseState = STATE of text * line * column
 
 fun init_state text = (STATE(text, 1, 1))
-
-fun get_unparsed_text (STATE(text, _, _)) = text
-fun get_line_num (STATE(_, l, _)) = l
-fun get_col_num (STATE(_, _, c)) = c
 
 exception TestFailed
 exception TabCharacterFound
@@ -30,7 +20,6 @@ exception UnexpectedException
 datatype syntax_error = TAB of error_message
                | LIT_NOT_FOUND of error_message
                | EXPECTED_IDENT of error_message
-               | TEST_FAILED of error_message
                | EXPECTED_EXPR of error_message
                | EXPECTED_DEF of error_message
                | EXPECTED_INT of error_message
@@ -56,8 +45,6 @@ fun raise_syntax_error (STATE(_, l, c)) error =
           (print (get_msg msg); raise LiteralNotFound)
       | handle_error (EXPECTED_IDENT(msg)) =
           (print (get_msg msg); raise ExpectedIdentifier)
-      | handle_error (TEST_FAILED(msg)) =
-          (print (get_msg msg); raise TestFailed)
       | handle_error (EXPECTED_EXPR(msg)) =
           (print (get_msg msg); raise ExpectedExpression)
       | handle_error (EXPECTED_DEF(msg)) =
