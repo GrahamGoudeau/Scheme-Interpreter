@@ -208,6 +208,8 @@ val init_env : env = []
 
 fun combine_envs env1 env2 = env1 @ env2
 
+val get_used_addresses = List.map (fn (_, addr) => addr)
+
 fun print_all_env (xs: env) =
   (print "=== Environment state: ===\n";
    List.map
@@ -431,7 +433,7 @@ fun execute defs do_garbage_collect =
                 val (result, new_env) = eval(exp, env)
                 val _ = check_reserved result
                 val _ = if do_garbage_collect then
-                          garbage_collect (List.map (fn (_, addr) => addr) new_env)
+                          garbage_collect (get_used_addresses new_env)
                         else []
               in
                 new_env
