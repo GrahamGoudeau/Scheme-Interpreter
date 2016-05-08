@@ -60,7 +60,9 @@ fun member_string (elem:string) (xs:string list) =
 fun value_to_string (NIL) = "NIL"
   | value_to_string (BOOL(true)) = "#t"
   | value_to_string (BOOL(false)) = "#f"
-  | value_to_string (NUM(int)) = (Int.toString int)
+  | value_to_string (NUM(int)) =
+      if int >= 0 then (Int.toString int)
+      else ("-" ^ (Int.toString (~int)))
   | value_to_string (CLOSURE(lambda, env)) = "<closure>"
   | value_to_string (PRIMITIVE(ident)) = "[primitive func: " ^ ident ^ "]"
   | value_to_string UNDEFINED = "<undefined>"
